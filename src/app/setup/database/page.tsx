@@ -89,6 +89,18 @@ const DATABASE_PROVIDERS: DatabaseProvider[] = [
     docsUrl: 'https://dev.mysql.com/doc/'
   },
   {
+    id: 'mongodb',
+    name: 'MongoDB Atlas',
+    icon: Database,
+    color: 'from-green-500 to-emerald-600',
+    description: 'قاعدة بيانات NoSQL مرنة وقابلة للتوسع',
+    fields: [
+      { name: 'Connection URI', key: 'uri', type: 'password', placeholder: 'mongodb+srv://user:pass@cluster.mongodb.net', required: true, helpText: 'رابط اتصال MongoDB Atlas' },
+      { name: 'Database Name', key: 'dbName', type: 'text', placeholder: 'myapp', required: true, helpText: 'اسم قاعدة البيانات' }
+    ],
+    docsUrl: 'https://www.mongodb.com/atlas/docs'
+  },
+  {
     id: 'neon',
     name: 'Neon',
     icon: Zap,
