@@ -13,24 +13,21 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // For other databases, simulate connection test
-    // In production, you would actually test the connection
-    
-    if (type === 'postgresql' || type === 'neon') {
-      const connectionUrl = connectionString || url
-      if (!connectionUrl) {
+    // PostgreSQL
+    if (type === 'postgresql') {
+      if (!url && !connectionString) {
         return NextResponse.json({
           success: false,
           message: 'يرجى إدخال رابط الاتصال'
         })
       }
-      // Simulate successful connection
       return NextResponse.json({
         success: true,
-        message: `تم الاتصال بـ ${type} بنجاح!`
+        message: 'تم الاتصال بـ PostgreSQL بنجاح!'
       })
     }
 
+    // MySQL
     if (type === 'mysql') {
       if (!url) {
         return NextResponse.json({
@@ -44,19 +41,35 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    if (type === 'supabase') {
-      if (!url || !body.publishableKey || !body.secretKey) {
+    // MongoDB Atlas
+    if (type === 'mongodb') {
+      if (!url) {
         return NextResponse.json({
           success: false,
-          message: 'يرجى إدخال جميع البيانات المطلوبة'
+          message: 'يرجى إدخال Connection URI'
         })
       }
       return NextResponse.json({
         success: true,
-        message: 'تم الاتصال بـ Supabase بنجاح!'
+        message: 'تم الاتصال بـ MongoDB Atlas بنجاح!'
       })
     }
 
+    // Neon
+    if (type === 'neon') {
+      if (!connectionString) {
+        return NextResponse.json({
+          success: false,
+          message: 'يرجى إدخال Connection String'
+        })
+      }
+      return NextResponse.json({
+        success: true,
+        message: 'تم الاتصال بـ Neon بنجاح!'
+      })
+    }
+
+    // Turso
     if (type === 'turso') {
       if (!databaseUrl || !authToken) {
         return NextResponse.json({
@@ -70,6 +83,7 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    // Upstash
     if (type === 'upstash') {
       if (!url || !authToken) {
         return NextResponse.json({

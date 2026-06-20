@@ -89,18 +89,16 @@ const DATABASE_PROVIDERS: DatabaseProvider[] = [
     docsUrl: 'https://dev.mysql.com/doc/'
   },
   {
-    id: 'supabase',
-    name: 'Supabase',
-    icon: Cloud,
-    color: 'from-emerald-500 to-green-600',
-    description: 'منصة متكاملة مع Authentication وRealtime',
+    id: 'mongodb',
+    name: 'MongoDB Atlas',
+    icon: Database,
+    color: 'from-green-500 to-emerald-600',
+    description: 'قاعدة بيانات NoSQL مرنة وقابلة للتوسع',
     fields: [
-      { name: 'Project URL', key: 'url', type: 'text', placeholder: 'https://xxx.supabase.co', required: true },
-      { name: 'Anon Key (Public)', key: 'publishableKey', type: 'text', placeholder: 'eyJhbGc...', required: true, helpText: 'المفتاح العام من Supabase' },
-      { name: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'eyJhbGc...', required: true, helpText: 'المفتاح السري من Supabase' },
-      { name: 'JWT Secret', key: 'jwtSecret', type: 'password', placeholder: 'أدخل JWT Secret', required: false, helpText: 'JWT Secret من Supabase' }
+      { name: 'Connection URI', key: 'uri', type: 'password', placeholder: 'mongodb+srv://user:pass@cluster.mongodb.net', required: true, helpText: 'رابط اتصال MongoDB Atlas' },
+      { name: 'Database Name', key: 'dbName', type: 'text', placeholder: 'myapp', required: true, helpText: 'اسم قاعدة البيانات' }
     ],
-    docsUrl: 'https://supabase.com/docs'
+    docsUrl: 'https://www.mongodb.com/atlas/docs'
   },
   {
     id: 'neon',

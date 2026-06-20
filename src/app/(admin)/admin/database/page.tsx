@@ -39,7 +39,7 @@ const PROVIDERS: DatabaseProvider[] = [
   { id: 'sqlite', name: 'SQLite', icon: HardDrive, color: 'from-blue-500 to-blue-700' },
   { id: 'postgresql', name: 'PostgreSQL', icon: Database, color: 'from-blue-400 to-cyan-500' },
   { id: 'mysql', name: 'MySQL', icon: Server, color: 'from-orange-500 to-yellow-500' },
-  { id: 'supabase', name: 'Supabase', icon: Cloud, color: 'from-emerald-500 to-green-600' },
+  { id: 'mongodb', name: 'MongoDB Atlas', icon: Database, color: 'from-green-500 to-emerald-600' },
   { id: 'neon', name: 'Neon', icon: Zap, color: 'from-purple-500 to-pink-500' },
 ]
 
