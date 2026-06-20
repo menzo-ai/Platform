@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import Card, { CardHeader, CardContent } from '@/components/ui/card'
 import Button from '@/components/ui/button'
+import Input from '@/components/ui/input'
 import Badge from '@/components/ui/badge'
 import Modal from '@/components/ui/modal'
-import Input from '@/components/ui/input'
 import { 
   Database,
   Download,
@@ -14,440 +14,381 @@ import {
   AlertTriangle,
   CheckCircle,
   Loader2,
-  Server,
-  Users,
-  HardDrive,
-  FileJson,
-  Eye,
-  EyeOff,
   RefreshCw,
-  Shield,
+  HardDrive,
+  Cloud,
+  Server,
   Globe,
-  Lock,
-  Key,
-  ExternalLink,
-  ChevronDown,
-  ChevronUp
+  Zap,
+  FileJson,
+  Users,
+  BookOpen,
+  Settings,
+  MessageSquare
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
-const DATABASE_PROVIDERS = [
-  { id: 'sqlite', name: 'SQLite', icon: HardDrive, color: 'text-blue-400' },
-  { id: 'supabase', name: 'Supabase', icon: Server, color: 'text-emerald-400' },
-  { id: 'mongodb', name: 'MongoDB Atlas', icon: Database, color: 'text-green-400' },
-  { id: 'neon', name: 'Neon', icon: Server, color: 'text-purple-400' },
-  { id: 'turso', name: 'Turso', icon: Server, color: 'text-amber-400' },
-  { id: 'upstash', name: 'Upstash', icon: Database, color: 'text-red-400' },
+interface DatabaseProvider {
+  id: string
+  name: string
+  icon: typeof Database
+  color: string
+}
+
+const PROVIDERS: DatabaseProvider[] = [
+  { id: 'sqlite', name: 'SQLite', icon: HardDrive, color: 'from-blue-500 to-blue-700' },
+  { id: 'postgresql', name: 'PostgreSQL', icon: Database, color: 'from-blue-400 to-cyan-500' },
+  { id: 'mysql', name: 'MySQL', icon: Server, color: 'from-orange-500 to-yellow-500' },
+  { id: 'supabase', name: 'Supabase', icon: Cloud, color: 'from-emerald-500 to-green-600' },
+  { id: 'neon', name: 'Neon', icon: Zap, color: 'from-purple-500 to-pink-500' },
 ]
 
-export default function DatabasePage() {
-  const [activeProvider, setActiveProvider] = useState('sqlite')
-  const [config, setConfig] = useState<Record<string, string>>({
-    url: '',
-    anonKey: '',
-    serviceKey: '',
-    uri: '',
-    connectionString: '',
-    databaseUrl: '',
-    authToken: ''
-  })
-  const [showKeys, setShowKeys] = useState(false)
-  const [expandedSection, setExpandedSection] = useState<string | null>('current')
-  
-  // Export/Import states
+interface ExportOption {
+  id: string
+  name: string
+  description: string
+  icon: typeof Database
+}
+
+export default function DatabaseManagementPage() {
+  const [currentProvider, setCurrentProvider] = useState<string>('sqlite')
+  const [showChangeModal, setShowChangeModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [showImportModal, setShowImportModal] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [importing, setImporting] = useState(false)
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
-  const [confirmModal, setConfirmModal] = useState<{
-    title: string
-    message: string
-    type: 'warning' | 'danger'
-    onConfirm: () => void
-  } | null>(null)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
-  const handleConfigChange = (fieldId: string, value: string) => {
-    setConfig(prev => ({ ...prev, [fieldId]: value }))
-  }
+  const exportOptions: ExportOption[] = [
+    { id: 'all', name: 'جميع البيانات', description: 'تصدير جميع بيانات المنصة (ما عدا حساب الأدمن)', icon: Database },
+    { id: 'users', name: 'بيانات المستخدمين', description: 'تصدير بيانات الطلاب والمستخدمين', icon: Users },
+    { id: 'courses', name: 'الكورسات والمحاضرات', description: 'تصدير الكورسات والفصول والمحاضرات', icon: BookOpen },
+    { id: 'settings', name: 'إعدادات المنصة', description: 'تصدير إعدادات المنصة العامة', icon: Settings },
+    { id: 'ai', name: 'بيانات الذكاء الاصطناعي', description: 'تصدير محادثات وإعدادات AI', icon: MessageSquare },
+  ]
 
-  const handleExportAll = async () => {
+  const handleExport = async (type: string) => {
     setExporting(true)
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    const data = {
-      exportedAt: new Date().toISOString(),
-      provider: activeProvider,
-      version: '1.0.0',
-      users: [],
-      courses: [],
-      lectures: [],
-      enrollments: [],
-      purchases: [],
-      subscriptions: [],
-      walletTransactions: [],
-      aiConversations: [],
-      forumPosts: [],
-      // Exclude admin accounts
+    try {
+      const response = await fetch(`/api/admin/database/export?type=${type}`)
+      if (response.ok) {
+        const data = await response.json()
+        const blob = new Blob([JSON.stringify(data.data, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `gelvano-${type}-${new Date().toISOString().split('T')[0]}.json`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+        toast.success('تم تصدير البيانات بنجاح!')
+      } else {
+        throw new Error('Export failed')
+      }
+    } catch (error) {
+      toast.error('فشل تصدير البيانات')
     }
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `platform-backup-${Date.now()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    
     setExporting(false)
-  }
-
-  const handleExportUsers = async () => {
-    setExporting(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    const data = {
-      exportedAt: new Date().toISOString(),
-      type: 'users-only',
-      version: '1.0.0',
-      users: []
-    }
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `users-backup-${Date.now()}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-    
-    setExporting(false)
+    setShowExportModal(false)
   }
 
   const handleImport = async (file: File) => {
     setImporting(true)
-    
     try {
       const text = await file.text()
       const data = JSON.parse(text)
       
-      if (data.type === 'full-backup') {
-        setConfirmModal({
-          title: 'استيراد نسخة كاملة',
-          message: 'سيتم استيراد جميع البيانات. هل تريد المتابعة؟',
-          type: 'warning',
-          onConfirm: async () => {
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            setShowConfirmModal(false)
-            alert('تم استيراد البيانات بنجاح!')
-          }
-        })
-      } else if (data.type === 'users-only') {
-        setConfirmModal({
-          title: 'استيراد بيانات المستخدمين',
-          message: 'سيتم استيراد بيانات المستخدمين فقط. سيتم استيراد ' + (data.users?.length || 0) + ' مستخدم.',
-          type: 'warning',
-          onConfirm: async () => {
-            await new Promise(resolve => setTimeout(resolve, 2000))
-            setShowConfirmModal(false)
-            alert('تم استيراد البيانات بنجاح!')
-          }
-        })
+      const response = await fetch('/api/admin/database/import', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      })
+      
+      if (response.ok) {
+        toast.success('تم استيراد البيانات بنجاح!')
       } else {
-        alert('ملف غير صالح!')
+        throw new Error('Import failed')
       }
     } catch (error) {
-      alert('حدث خطأ أثناء قراءة الملف!')
+      toast.error('فشل استيراد البيانات')
     }
-    
     setImporting(false)
+    setShowImportModal(false)
   }
 
-  const handleChangeProvider = () => {
-    setConfirmModal({
-      title: '⚠️ تحذير: تغيير قاعدة البيانات',
-      message: 'عند تغيير قاعدة البيانات سيتم حذف جميع البيانات الحالية بما في ذلك حساب الأدمن!\n\nهذه العملية لا يمكن التراجع عنها. هل أنت متأكد؟',
-      type: 'danger',
-      onConfirm: () => {
-        setShowConfirmModal(false)
-        window.location.href = '/setup'
+  const handleDeleteDatabase = async () => {
+    if (deleteConfirmText !== 'احذف الكل') {
+      toast.error('يرجى كتابة "احذف الكل" للتأكيد')
+      return
+    }
+
+    try {
+      const response = await fetch('/api/admin/database', {
+        method: 'DELETE'
+      })
+      
+      if (response.ok) {
+        toast.success('تم حذف جميع البيانات!')
+        window.location.href = '/setup/database'
+      } else {
+        throw new Error('Delete failed')
       }
-    })
-    setShowConfirmModal(true)
+    } catch (error) {
+      toast.error('فشل حذف البيانات')
+    }
   }
 
-  const currentProvider = DATABASE_PROVIDERS.find(p => p.id === activeProvider)
+  const currentProviderData = PROVIDERS.find(p => p.id === currentProvider)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-3">
-            <Database className="w-7 h-7 text-primary" />
-            إدارة قاعدة البيانات
-          </h1>
-          <p className="text-slate-400">إدارة وتصدير واستيراد البيانات</p>
-        </div>
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-3">
+          <Database className="w-7 h-7 text-primary" />
+          إدارة قاعدة البيانات
+        </h1>
+        <p className="text-slate-400 mt-1">إدارة وتصدير واستيراد بيانات المنصة</p>
       </div>
 
-      {/* Current Database Status */}
       <Card>
         <CardHeader>
-          <button 
-            onClick={() => setExpandedSection(expandedSection === 'current' ? null : 'current')}
-            className="w-full flex items-center justify-between"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                <Server className="w-5 h-5 text-blue-400" />
-              </div>
-              <div className="text-right">
-                <h3 className="font-bold">قاعدة البيانات الحالية</h3>
-                <p className="text-sm text-slate-400">
-                  {currentProvider?.name} ({activeProvider.toUpperCase()})
-                </p>
-              </div>
-            </div>
-            {expandedSection === 'current' ? (
-              <ChevronUp className="w-5 h-5" />
-            ) : (
-              <ChevronDown className="w-5 h-5" />
-            )}
-          </button>
+          <h3 className="font-bold flex items-center gap-2">
+            <Server className="w-5 h-5 text-primary" />
+            قاعدة البيانات الحالية
+          </h3>
         </CardHeader>
-        
-        {expandedSection === 'current' && (
-          <CardContent className="space-y-6">
-            {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="p-4 bg-slate-800/50 rounded-xl text-center">
-                <Users className="w-6 h-6 text-primary mx-auto mb-2" />
-                <p className="text-2xl font-bold">0</p>
-                <p className="text-xs text-slate-400">المستخدمين</p>
+        <CardContent>
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${currentProviderData?.color || 'from-slate-500 to-slate-600'} flex items-center justify-center`}>
+                {currentProviderData?.icon && <currentProviderData.icon className="w-7 h-7 text-white" />}
               </div>
-              <div className="p-4 bg-slate-800/50 rounded-xl text-center">
-                <HardDrive className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold">0</p>
-                <p className="text-xs text-slate-400">الكورسات</p>
-              </div>
-              <div className="p-4 bg-slate-800/50 rounded-xl text-center">
-                <FileJson className="w-6 h-6 text-amber-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold">0</p>
-                <p className="text-xs text-slate-400">المحاضرات</p>
-              </div>
-              <div className="p-4 bg-slate-800/50 rounded-xl text-center">
-                <Shield className="w-6 h-6 text-purple-400 mx-auto mb-2" />
-                <p className="text-2xl font-bold">1</p>
-                <p className="text-xs text-slate-400">الأدمن</p>
-              </div>
-            </div>
-
-            {/* Connection Info */}
-            <div className="p-4 bg-slate-800/50 rounded-xl">
-              <h4 className="font-medium mb-3 flex items-center gap-2">
-                <Globe className="w-4 h-4 text-slate-400" />
-                معلومات الاتصال
-              </h4>
-              <div className="space-y-2 text-sm">
-                {activeProvider === 'sqlite' && (
-                  <div className="flex items-center gap-2">
-                    <Badge variant="success">متصل</Badge>
-                    <span className="text-slate-400">ملف محلي: ./prisma/dev.db</span>
-                  </div>
-                )}
-                {activeProvider === 'supabase' && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">URL:</span>
-                      <code className="text-xs bg-slate-700 px-2 py-1 rounded">{config.url || 'غير محدد'}</code>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Status:</span>
-                      <Badge variant="success">متصل</Badge>
-                    </div>
-                  </>
-                )}
-                {activeProvider === 'mongodb' && (
-                  <>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Database:</span>
-                      <code className="text-xs bg-slate-700 px-2 py-1 rounded">{config.dbName || 'غير محدد'}</code>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-slate-400">Status:</span>
-                      <Badge variant="success">متصل</Badge>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        )}
-      </Card>
-
-      {/* Export Data */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-              <Download className="w-5 h-5 text-emerald-400" />
-            </div>
-            <div>
-              <h3 className="font-bold">تصدير البيانات</h3>
-              <p className="text-sm text-slate-400">تنزيل نسخة احتياطية من البيانات</p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Export All */}
-          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl">
-            <div className="flex items-center gap-3">
-              <FileJson className="w-6 h-6 text-blue-400" />
               <div>
-                <p className="font-medium">تصدير جميع البيانات</p>
-                <p className="text-xs text-slate-400">باستثناء حساب الأدمن</p>
+                <h4 className="font-bold text-lg">{currentProviderData?.name || 'غير محدد'}</h4>
+                <p className="text-sm text-slate-400">متصل ويعمل</p>
               </div>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={handleExportAll}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              تصدير
-            </Button>
-          </div>
-
-          {/* Export Users Only */}
-          <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl">
-            <div className="flex items-center gap-3">
-              <Users className="w-6 h-6 text-purple-400" />
-              <div>
-                <p className="font-medium">تصدير بيانات المستخدمين فقط</p>
-                <p className="text-xs text-slate-400">مفيد لنقل المستخدمين لمنصة أخرى</p>
-              </div>
+            <div className="flex items-center gap-2">
+              <Badge variant="success" className="flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                متصل
+              </Badge>
+              <Button variant="outline" onClick={() => setShowChangeModal(true)}>
+                <RefreshCw className="w-4 h-4 ml-2" />
+                تغيير
+              </Button>
             </div>
-            <Button 
-              variant="outline" 
-              onClick={handleExportUsers}
-              disabled={exporting}
-            >
-              {exporting ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-              تصدير
-            </Button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Import Data */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setShowExportModal(true)}>
+          <CardContent className="p-6 text-center">
+            <div className="w-14 h-14 rounded-xl bg-blue-500/20 flex items-center justify-center mx-auto mb-4">
+              <Download className="w-7 h-7 text-blue-400" />
+            </div>
+            <h4 className="font-bold mb-2">تصدير البيانات</h4>
+            <p className="text-sm text-slate-400">تحميل نسخة احتياطية من البيانات</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:border-primary/50 transition-colors" onClick={() => setShowImportModal(true)}>
+          <CardContent className="p-6 text-center">
+            <div className="w-14 h-14 rounded-xl bg-emerald-500/20 flex items-center justify-center mx-auto mb-4">
+              <Upload className="w-7 h-7 text-emerald-400" />
+            </div>
+            <h4 className="font-bold mb-2">استيراد البيانات</h4>
+            <p className="text-sm text-slate-400">رفع نسخة احتياطية سابقة</p>
+          </CardContent>
+        </Card>
+
+        <Card className="cursor-pointer hover:border-red-500/50 transition-colors" onClick={() => setShowDeleteModal(true)}>
+          <CardContent className="p-6 text-center">
+            <div className="w-14 h-14 rounded-xl bg-red-500/20 flex items-center justify-center mx-auto mb-4">
+              <Trash2 className="w-7 h-7 text-red-400" />
+            </div>
+            <h4 className="font-bold mb-2">حذف البيانات</h4>
+            <p className="text-sm text-slate-400">حذف جميع البيانات نهائياً</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center">
-              <Upload className="w-5 h-5 text-amber-400" />
-            </div>
-            <div>
-              <h3 className="font-bold">استيراد البيانات</h3>
-              <p className="text-sm text-slate-400">رفع نسخة احتياطية سابقة</p>
-            </div>
-          </div>
+          <h3 className="font-bold flex items-center gap-2">
+            <FileJson className="w-5 h-5 text-primary" />
+            إحصائيات البيانات
+          </h3>
         </CardHeader>
         <CardContent>
-          <div className="border-2 border-dashed border-slate-700 rounded-xl p-8 text-center hover:border-slate-600 transition-colors">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 bg-slate-800/50 rounded-xl text-center">
+              <p className="text-2xl font-bold text-primary">0</p>
+              <p className="text-sm text-slate-400">مستخدم</p>
+            </div>
+            <div className="p-4 bg-slate-800/50 rounded-xl text-center">
+              <p className="text-2xl font-bold text-emerald-400">0</p>
+              <p className="text-sm text-slate-400">كورس</p>
+            </div>
+            <div className="p-4 bg-slate-800/50 rounded-xl text-center">
+              <p className="text-2xl font-bold text-amber-400">0</p>
+              <p className="text-sm text-slate-400">محاضرة</p>
+            </div>
+            <div className="p-4 bg-slate-800/50 rounded-xl text-center">
+              <p className="text-2xl font-bold text-blue-400">0</p>
+              <p className="text-sm text-slate-400">محادثة AI</p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Modal isOpen={showChangeModal} onClose={() => setShowChangeModal(false)} title="تغيير قاعدة البيانات" size="lg">
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-400">تحذير!</p>
+                <p className="text-slate-400">تغيير قاعدة البيانات سيؤدي لحذف جميع البيانات الحالية.</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {PROVIDERS.map((provider) => (
+              <button
+                key={provider.id}
+                onClick={() => setCurrentProvider(provider.id)}
+                className={`p-4 rounded-xl border-2 transition-all ${
+                  currentProvider === provider.id
+                    ? 'border-primary bg-primary/10'
+                    : 'border-slate-700 hover:border-slate-600'
+                }`}
+              >
+                <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${provider.color} flex items-center justify-center mx-auto mb-2`}>
+                  <provider.icon className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-sm font-medium">{provider.name}</p>
+              </button>
+            ))}
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <Button variant="outline" onClick={() => setShowChangeModal(false)} className="flex-1">
+              إلغاء
+            </Button>
+            <Button onClick={() => {
+              setShowChangeModal(false)
+              window.location.href = '/setup/database'
+            }} className="flex-1 bg-primary">
+              تغيير قاعدة البيانات
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={showExportModal} onClose={() => setShowExportModal(false)} title="تصدير البيانات" size="lg">
+        <div className="space-y-3">
+          {exportOptions.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => handleExport(option.id)}
+              disabled={exporting}
+              className="w-full p-4 rounded-xl border border-slate-700 hover:border-primary/50 transition-all text-right"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                  <option.icon className="w-5 h-5 text-blue-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium">{option.name}</p>
+                  <p className="text-xs text-slate-400">{option.description}</p>
+                </div>
+                {exporting && <Loader2 className="w-5 h-5 animate-spin text-primary" />}
+              </div>
+            </button>
+          ))}
+        </div>
+      </Modal>
+
+      <Modal isOpen={showImportModal} onClose={() => setShowImportModal(false)} title="استيراد البيانات" size="lg">
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-400">تنبيه!</p>
+                <p className="text-slate-400">استيراد البيانات سيستبدل البيانات الحالية. تأكد من نسخة احتياطية أولاً.</p>
+              </div>
+            </div>
+          </div>
+
+          <label className="block">
             <input
               type="file"
               accept=".json"
               onChange={(e) => e.target.files?.[0] && handleImport(e.target.files[0])}
               className="hidden"
-              id="import-file"
             />
-            <label htmlFor="import-file" className="cursor-pointer">
+            <div className="p-8 border-2 border-dashed border-slate-700 rounded-xl text-center cursor-pointer hover:border-primary/50 transition-colors">
               {importing ? (
-                <Loader2 className="w-12 h-12 text-amber-400 mx-auto mb-4 animate-spin" />
+                <Loader2 className="w-10 h-10 animate-spin text-primary mx-auto" />
               ) : (
-                <Upload className="w-12 h-12 text-slate-600 mx-auto mb-4" />
+                <>
+                  <Upload className="w-10 h-10 text-slate-400 mx-auto mb-2" />
+                  <p className="font-medium">اضغط لاختيار ملف</p>
+                  <p className="text-xs text-slate-400">ملفات JSON فقط</p>
+                </>
               )}
-              <p className="text-lg font-medium mb-2">اسحب ملف JSON هنا أو اضغط للاختيار</p>
-              <p className="text-sm text-slate-400">يجب أن يكون الملف بصيغة JSON</p>
-            </label>
-          </div>
-        </CardContent>
-      </Card>
+            </div>
+          </label>
+        </div>
+      </Modal>
 
-      {/* Change Database Provider */}
-      <Card className="border-red-500/20">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
-              <RefreshCw className="w-5 h-5 text-red-400" />
-            </div>
-            <div>
-              <h3 className="font-bold">تغيير قاعدة البيانات</h3>
-              <p className="text-sm text-slate-400">الانتقال لموفر قاعدة بيانات مختلف</p>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
+      <Modal isOpen={showDeleteModal} onClose={() => setShowDeleteModal(false)} title="حذف جميع البيانات" size="lg">
+        <div className="space-y-4">
           <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl">
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
               <div className="text-sm">
-                <p className="font-medium text-red-400 mb-1">⚠️ تحذير مهم!</p>
-                <p className="text-slate-300">
-                  تغيير قاعدة البيانات سيؤدي لحذف جميع البيانات الحالية بما في ذلك:
-                </p>
+                <p className="font-medium text-red-400">هذا الإجراء لا يمكن التراجع عنه!</p>
+                <p className="text-slate-400">سيتم حذف جميع البيانات نهائياً بما في ذلك:</p>
                 <ul className="mt-2 space-y-1 text-slate-400">
                   <li>• جميع حسابات المستخدمين</li>
                   <li>• جميع الكورسات والمحاضرات</li>
-                  <li>• جميع الاشتراكات والمعاملات</li>
-                  <li>• حساب الأدمن الخاص بك</li>
+                  <li>• جميع إعدادات المنصة</li>
+                  <li>• جميع بيانات الذكاء الاصطناعي</li>
                 </ul>
-                <p className="mt-2 text-slate-300 font-medium">
-                  ⚠️ تأكد من تصدير بياناتك أولاً!
-                </p>
               </div>
             </div>
           </div>
 
-          <Button 
-            variant="danger" 
-            onClick={handleChangeProvider}
-            className="w-full"
-          >
-            <Globe className="w-4 h-4" />
-            تغيير قاعدة البيانات
-          </Button>
-        </CardContent>
-      </Card>
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              اكتب "احذف الكل" للتأكيد:
+            </label>
+            <Input
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="احذف الكل"
+            />
+          </div>
 
-      {/* Confirmation Modal */}
-      <Modal 
-        isOpen={showConfirmModal} 
-        onClose={() => setShowConfirmModal(false)}
-        title={confirmModal?.title || ''}
-      >
-        <div className="space-y-4">
-          <p className="text-slate-300 whitespace-pre-line">{confirmModal?.message}</p>
           <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={() => setShowConfirmModal(false)}
-              className="flex-1"
-            >
+            <Button variant="outline" onClick={() => setShowDeleteModal(false)} className="flex-1">
               إلغاء
             </Button>
-            <Button 
-              variant="danger" 
-              onClick={confirmModal?.onConfirm}
+            <Button
+              variant="danger"
+              onClick={handleDeleteDatabase}
+              disabled={deleteConfirmText !== 'احذف الكل'}
               className="flex-1"
             >
-              تأكيد
+              <Trash2 className="w-4 h-4 ml-2" />
+              تأكيد الحذف
             </Button>
           </div>
         </div>

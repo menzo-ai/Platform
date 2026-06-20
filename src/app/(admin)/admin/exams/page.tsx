@@ -87,7 +87,7 @@ export default function AdminExamsPage() {
     const config: Record<string, { variant: any; label: string }> = {
       active: { variant: 'success', label: 'نشط' },
       scheduled: { variant: 'warning', label: 'مجدول' },
-      closed: { variant: 'secondary', label: 'مغلق' },
+      closed: { variant: 'info', label: 'مغلق' },
       draft: { variant: 'info', label: 'مسودة' }
     }
     return <Badge variant={config[status].variant}>{config[status].label}</Badge>

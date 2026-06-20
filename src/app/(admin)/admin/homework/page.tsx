@@ -112,7 +112,7 @@ export default function AdminHomeworkPage() {
   const getStatusBadge = (status: Assignment['status']) => {
     const config: Record<string, { variant: any; label: string; color: string }> = {
       active: { variant: 'success', label: 'نشط', color: 'text-emerald-400' },
-      closed: { variant: 'secondary', label: 'مغلق', color: 'text-slate-400' },
+      closed: { variant: 'info', label: 'مغلق', color: 'text-slate-400' },
       draft: { variant: 'warning', label: 'مسودة', color: 'text-amber-400' }
     }
     return <Badge variant={config[status].variant}>{config[status].label}</Badge>
