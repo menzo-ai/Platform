@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card, { CardHeader, CardContent } from '@/components/ui/card'
 import Button from '@/components/ui/button'
 import Badge from '@/components/ui/badge'
@@ -10,8 +10,6 @@ import {
   Brain,
   Settings,
   Zap,
-  MessageSquare,
-  BookOpen,
   TestTube,
   Save,
   RotateCcw,
@@ -19,59 +17,187 @@ import {
   Shield,
   CheckCircle,
   AlertCircle,
-  Send,
   Bot,
-  Code
+  Code,
+  Search,
+  Globe,
+  Eye,
+  EyeOff,
+  Key,
+  ChevronDown,
+  ChevronUp,
+  FileText,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react'
 
-const defaultSystemPrompt = `أنت مساعد تعليمي متخصص في الفيزياء للمرحلة الثانوية المصرية.
-اسمك: menzo-ai
-المعلم: م. خالد أسامة
+// AI Services with their free models
+const AI_SERVICES: Record<string, { name: string; icon: string; freeModels: string[] }> = {
+  openai: { name: 'OpenAI', icon: '🤖', freeModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'] },
+  anthropic: { name: 'Anthropic', icon: '🧠', freeModels: ['claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus'] },
+  deepseek: { name: 'DeepSeek', icon: '🔮', freeModels: ['deepseek-chat', 'deepseek-coder'] },
+  google: { name: 'Google Gemini', icon: '✨', freeModels: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'] },
+  minimax: { name: 'MiniMax', icon: '🔢', freeModels: ['abab6-chat', 'abab5.5-chat'] },
+  moonshot: { name: 'Moonshot', icon: '🌙', freeModels: ['moonshot-v1-8k', 'moonshot-v1-32k'] },
+  openrouter: { name: 'OpenRouter', icon: '🛤️', freeModels: ['openrouter/auto', 'openai/gpt-4o-mini'] },
+  groq: { name: 'Groq', icon: '⚡', freeModels: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile'] },
+  cohere: { name: 'Cohere', icon: '🌊', freeModels: ['command-r-plus', 'command-r'] },
+  deepinfra: { name: 'DeepInfra', icon: '🔧', freeModels: ['meta-llama/Llama-3.1-8B-Instruct'] },
+}
+
+// Search Engines
+const SEARCH_ENGINES = [
+  { id: 'serper', name: 'Serper API', needsApiKey: true },
+  { id: 'tavily', name: 'Tavily AI', needsApiKey: true },
+  { id: 'jina', name: 'Jina AI Reader', needsApiKey: false },
+  { id: 'exa', name: 'Exa AI', needsApiKey: true },
+  { id: 'ddgs', name: 'DDGS (DuckDuckGo)', needsApiKey: false },
+  { id: 'searxng', name: 'SearXNG', needsApiKey: false },
+  { id: 'none', name: 'بدون بحث', needsApiKey: false },
+]
+
+export default function AdminAISettingsPage() {
+  // Main settings
+  const [isEnabled, setIsEnabled] = useState(true)
+  const [service, setService] = useState('openai')
+  const [model, setModel] = useState('gpt-4o-mini')
+  const [apiKey, setApiKey] = useState('')
+  const [showApiKey, setShowApiKey] = useState(false)
+  
+  // Search settings
+  const [searchEngine, setSearchEngine] = useState('none')
+  const [searchApiKey, setSearchApiKey] = useState('')
+  const [showSearchApiKey, setShowSearchApiKey] = useState(false)
+  
+  // Prompts
+  const [customPrompt, setCustomPrompt] = useState(`أنت مساعد تعليمي متخصص في الفيزياء للمرحلة الثانوية المصرية.
+اسمك: مساعدك الذكي
+المعلم: المعلم المختص
 
 قواعدك:
 1. أجب بالعربية فقط
 2. استخدم أمثلة بسيطة ومفهومة
 3. اشرح القوانين بالتفصيل
 4. حل المسائل خطوة بخطوة
-5. إذا لم تكن متأكداً، قل ذلك
-6. لا تجب على أسئلة خارج الفيزياء`
+5. إذا لم تكن متأكداً، قل ذلك`)
+  
+  const [testPrompt, setTestPrompt] = useState(`أنشئ اختبار فيزياء للمرحلة الثانوية المصرية.
+- المادة: {subject}
+- عدد الأسئلة: {count}
+- مستوى الصعوبة: {difficulty}
+- الوقت: {time} دقائق
 
-export default function AdminAISettingsPage() {
-  const [systemPrompt, setSystemPrompt] = useState(defaultSystemPrompt)
-  const [apiEndpoint, setApiEndpoint] = useState('https://ws-2yatkvgy5gz29uxu.ap-southeast-1.maas.aliyuncs.com')
-  const [apiKey, setApiKey] = useState('sk-ws-H.IEXIRX.xZzz.MEUCIAuCHhQGRQI9u1slDWDIOqggbcUHIpbD1TfqRXamk_2bAiEAiTOjCDkdvfPV6oX3Q98gwTE9yi1e6B27xpUSAUkh1U8')
-  const [temperature, setTemperature] = useState(0.7)
-  const [maxTokens, setMaxTokens] = useState(2000)
-  const [isEnabled, setIsEnabled] = useState(true)
+يجب أن يكون الاختبار:
+1. متعدد الاختيارات (4 خيارات)
+2. كل سؤال له إجابة صحيحة واحدة
+3. متنوع في مستوى الصعوبة
+4. يغطي أهم النقاط في المادة
+
+أجب بصيغة JSON كالتالي:
+{
+  "questions": [
+    {
+      "question": "السؤال",
+      "options": ["الخيار 1", "الخيار 2", "الخيار 3", "الخيار 4"],
+      "correct": 0,
+      "difficulty": "سهل/متوسط/صعب",
+      "explanation": "شرح الإجابة"
+    }
+  ]
+}`)
+
+  // Test page settings
+  const [showTestPage, setShowTestPage] = useState(true)
+  
+  // States
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['main', 'search', 'prompts']))
+
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections)
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section)
+    } else {
+      newExpanded.add(section)
+    }
+    setExpandedSections(newExpanded)
+  }
+
+  const handleServiceChange = (newService: string) => {
+    setService(newService)
+    setModel(AI_SERVICES[newService]?.freeModels[0] || '')
+  }
 
   const handleTestAPI = async () => {
     setTesting(true)
     setTestResult(null)
     
-    // Simulate API test
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    setTestResult({
-      success: true,
-      message: 'API متصل بنجاح! menzo-ai يعمل بشكل طبيعي.'
-    })
+    try {
+      // Simulate API test
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      setTestResult({
+        success: true,
+        message: `تم الاتصال بنجاح بخدمة ${AI_SERVICES[service]?.name || service}!`
+      })
+    } catch (error) {
+      setTestResult({
+        success: false,
+        message: 'فشل الاتصال. تأكد من صحة API Key.'
+      })
+    }
     
     setTesting(false)
   }
 
-  const handleSave = () => {
-    alert('تم حفظ إعدادات menzo-ai بنجاح!')
+  const handleSave = async () => {
+    setSaving(true)
+    
+    try {
+      const response = await fetch('/api/admin/ai-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          isEnabled,
+          service,
+          model,
+          apiKey,
+          searchEngine,
+          searchApiKey,
+          customPrompt,
+          testPrompt,
+          showTestPage
+        })
+      })
+      
+      if (response.ok) {
+        alert('تم حفظ الإعدادات بنجاح!')
+      } else {
+        throw new Error('Failed to save')
+      }
+    } catch (error) {
+      alert('حدث خطأ أثناء الحفظ')
+    }
+    
+    setSaving(false)
   }
 
   const handleReset = () => {
-    if (confirm('هل تريد إعادة تعيين الإعدادات الافتراضية؟')) {
-      setSystemPrompt(defaultSystemPrompt)
-      setTemperature(0.7)
-      setMaxTokens(2000)
+    if (confirm('هل تريد إعادة تعيين جميع الإعدادات؟')) {
+      setIsEnabled(true)
+      setService('openai')
+      setModel('gpt-4o-mini')
+      setApiKey('')
+      setSearchEngine('none')
+      setSearchApiKey('')
+      setShowTestPage(true)
     }
   }
+
+  const currentService = AI_SERVICES[service] || { name: service, freeModels: [] }
+  const currentSearchEngine = SEARCH_ENGINES.find(e => e.id === searchEngine)
 
   return (
     <div className="space-y-6">
@@ -80,90 +206,163 @@ export default function AdminAISettingsPage() {
         <div>
           <h1 className="text-2xl font-bold mb-1 flex items-center gap-3">
             <Brain className="w-7 h-7 text-primary" />
-            إعدادات menzo-ai
+            إعدادات الذكاء الاصطناعي
           </h1>
-          <p className="text-slate-400">إدارة مساعد الفيزياء الذكي</p>
+          <p className="text-slate-400">إدارة المساعد الذكي وخدمة الاختبارات</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={handleReset}>
             <RotateCcw className="w-4 h-4" />
             إعادة تعيين
           </Button>
-          <Button onClick={handleSave}>
-            <Save className="w-4 h-4" />
+          <Button onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <span className="animate-spin">⏳</span>
+            ) : (
+              <Save className="w-4 h-4" />
+            )}
             حفظ التغييرات
           </Button>
         </div>
       </div>
 
-      {/* Status */}
-      <Card className={isEnabled ? 'border-emerald-500/30' : 'border-red-500/30'}>
+      {/* Main Status Toggle */}
+      <Card className={`border-2 ${isEnabled ? 'border-emerald-500/30' : 'border-red-500/30'}`}>
         <CardContent className="p-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <div className="flex items-center gap-4">
-              <div className={`w-14 h-14 rounded-xl flex items-center justify-center ${isEnabled ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
-                <Bot className={`w-7 h-7 ${isEnabled ? 'text-emerald-400' : 'text-red-400'}`} />
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isEnabled ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                <Bot className={`w-8 h-8 ${isEnabled ? 'text-emerald-400' : 'text-red-400'}`} />
               </div>
               <div>
-                <h3 className="text-xl font-bold">menzo-ai {isEnabled ? 'مفعل' : 'معطل'}</h3>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  المساعد الذكي 
+                  <Badge variant={isEnabled ? 'success' : 'danger'}>
+                    {isEnabled ? '🟢 مفعل' : '🔴 معطل'}
+                  </Badge>
+                </h3>
                 <p className="text-sm text-slate-400">
-                  {isEnabled ? 'المساعد الذكي يعمل بشكل طبيعي' : 'المساعد الذكي معطل حالياً'}
+                  {isEnabled 
+                    ? 'الذكاء الاصطناعي يعمل في الموقع - يظهر في القائمة الجانبية وصفحات الكورسات'
+                    : 'الذكاء الاصطناعي معطل - لن يظهر في أي مكان في الموقع'}
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <Badge variant={isEnabled ? 'success' : 'danger'} className="text-sm px-4 py-2">
-                {isEnabled ? '🟢 نشط' : '🔴 معطل'}
-              </Badge>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={isEnabled} 
-                  onChange={(e) => setIsEnabled(e.target.checked)}
-                  className="sr-only peer"
-                />
-                <div className="w-14 h-7 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:right-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-              </label>
-            </div>
+            <button
+              onClick={() => setIsEnabled(!isEnabled)}
+              className={`p-3 rounded-xl transition-all ${
+                isEnabled 
+                  ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' 
+                  : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+              }`}
+            >
+              {isEnabled ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
+            </button>
           </div>
         </CardContent>
       </Card>
 
-      {/* Connection Settings */}
+      {/* Main Settings */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Settings className="w-5 h-5 text-primary" />
-            <h3 className="font-bold">إعدادات الاتصال</h3>
-          </div>
+          <button 
+            onClick={() => toggleSection('main')}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <Settings className="w-5 h-5 text-primary" />
+              <h3 className="font-bold">إعدادات الخدمة والنموذج</h3>
+            </div>
+            {expandedSections.has('main') ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Input 
-            label="API Endpoint" 
-            value={apiEndpoint} 
-            onChange={(e) => setApiEndpoint(e.target.value)}
-            placeholder="https://api.example.com/v1/chat"
-          />
-          <Input 
-            label="API Key" 
-            type="password"
-            value={apiKey} 
-            onChange={(e) => setApiKey(e.target.value)}
-            placeholder="sk-..."
-          />
-          
-          <div className="flex gap-3">
+        
+        {expandedSections.has('main') && (
+          <CardContent className="space-y-6">
+            {/* Service Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-3">اختر الخدمة</label>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                {Object.entries(AI_SERVICES).map(([key, data]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleServiceChange(key)}
+                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                      service === key 
+                        ? 'border-primary bg-primary/10' 
+                        : 'border-slate-700 hover:border-slate-600'
+                    }`}
+                  >
+                    <span className="text-2xl">{data.icon}</span>
+                    <span className="text-sm font-medium">{data.name}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Model Selection */}
+            <div>
+              <label className="block text-sm font-medium mb-3">
+                النماذج المتاحة المجانية
+                <span className="text-slate-400 text-xs block">للخدمة: {currentService.name}</span>
+              </label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {currentService.freeModels.map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => setModel(m)}
+                    className={`p-3 rounded-lg border-2 transition-all text-sm ${
+                      model === m 
+                        ? 'border-primary bg-primary/10' 
+                        : 'border-slate-700 hover:border-slate-600'
+                    }`}
+                  >
+                    {m}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* API Key */}
+            <div>
+              <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                <Key className="w-4 h-4" />
+                API Key
+                <span className="text-xs text-slate-400">(لخدمة {currentService.name})</span>
+              </label>
+              <div className="relative">
+                <Input 
+                  type={showApiKey ? 'text' : 'password'}
+                  value={apiKey} 
+                  onChange={(e) => setApiKey(e.target.value)}
+                  placeholder="أدخل API Key هنا..."
+                  className="pl-10"
+                />
+                <button
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                >
+                  {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Test Connection */}
             <Button 
               variant="outline" 
               onClick={handleTestAPI}
-              disabled={testing}
-              className="flex-1"
+              disabled={testing || !apiKey}
+              className="w-full md:w-auto"
             >
               {testing ? (
-                <span className="flex items-center gap-2">
+                <>
                   <span className="animate-spin">⏳</span>
                   جاري الاختبار...
-                </span>
+                </>
               ) : (
                 <>
                   <TestTube className="w-4 h-4" />
@@ -171,146 +370,223 @@ export default function AdminAISettingsPage() {
                 </>
               )}
             </Button>
-          </div>
 
-          {testResult && (
-            <div className={`p-4 rounded-lg ${testResult.success ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-red-500/10 border border-red-500/20'}`}>
-              <div className="flex items-center gap-2">
+            {testResult && (
+              <div className={`p-4 rounded-lg flex items-center gap-3 ${
+                testResult.success 
+                  ? 'bg-emerald-500/10 border border-emerald-500/20' 
+                  : 'bg-red-500/10 border border-red-500/20'
+              }`}>
                 {testResult.success ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
                 ) : (
-                  <AlertCircle className="w-5 h-5 text-red-400" />
+                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
                 )}
                 <span className={testResult.success ? 'text-emerald-400' : 'text-red-400'}>
                   {testResult.message}
                 </span>
               </div>
-            </div>
-          )}
-        </CardContent>
+            )}
+          </CardContent>
+        )}
       </Card>
 
-      {/* Model Settings */}
+      {/* Search Engine Settings */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Zap className="w-5 h-5 text-amber-400" />
-            <h3 className="font-bold">إعدادات النموذج</h3>
-          </div>
+          <button 
+            onClick={() => toggleSection('search')}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <Search className="w-5 h-5 text-amber-400" />
+              <h3 className="font-bold">إعدادات محرك البحث</h3>
+            </div>
+            {expandedSections.has('search') ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid md:grid-cols-2 gap-4">
+        
+        {expandedSections.has('search') && (
+          <CardContent className="space-y-6">
             <div>
-              <label className="block text-sm font-medium mb-2">Temperature</label>
-              <input
-                type="range"
-                min={0}
-                max={1}
-                step={0.1}
-                value={temperature}
-                onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                className="w-full"
-              />
-              <div className="flex justify-between text-xs text-slate-400 mt-1">
-                <span>0.0 (دقيق)</span>
-                <span>{temperature}</span>
-                <span>1.0 (إبداعي)</span>
+              <label className="block text-sm font-medium mb-3">محرك البحث</label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {SEARCH_ENGINES.map((engine) => (
+                  <button
+                    key={engine.id}
+                    onClick={() => setSearchEngine(engine.id)}
+                    className={`p-3 rounded-lg border-2 transition-all text-sm ${
+                      searchEngine === engine.id 
+                        ? 'border-amber-500 bg-amber-500/10' 
+                        : 'border-slate-700 hover:border-slate-600'
+                    }`}
+                  >
+                    {engine.name}
+                  </button>
+                ))}
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-2">أقصى عدد كلمات</label>
-              <input
-                type="number"
-                value={maxTokens}
-                onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                min={100}
-                max={8000}
-                className="input w-full"
-              />
-              <p className="text-xs text-slate-400 mt-1">كلما زاد الرقم، كانت الإجابة أطول</p>
+
+            {currentSearchEngine?.needsApiKey && (
+              <div>
+                <label className="block text-sm font-medium mb-2 flex items-center gap-2">
+                  <Key className="w-4 h-4" />
+                  API Key
+                  <span className="text-xs text-slate-400">(لـ {currentSearchEngine.name})</span>
+                </label>
+                <div className="relative">
+                  <Input 
+                    type={showSearchApiKey ? 'text' : 'password'}
+                    value={searchApiKey} 
+                    onChange={(e) => setSearchApiKey(e.target.value)}
+                    placeholder="أدخل API Key لمحرك البحث..."
+                    className="pl-10"
+                  />
+                  <button
+                    onClick={() => setShowSearchApiKey(!showSearchApiKey)}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                  >
+                    {showSearchApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <div className="flex items-start gap-3">
+                <Globe className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-slate-300">
+                  <p className="font-medium mb-1">ما هو DDGS؟</p>
+                  <p className="text-slate-400">
+                    DDGS هي مكتبة للبحث تجمع نتائج من محركات بحث متعددة (Google, Bing, DuckDuckGo...)
+                    بدون الحاجة لـ API Key. يمكن استخدامها مباشرة أو مع SearXNG.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
-        </CardContent>
+          </CardContent>
+        )}
       </Card>
 
-      {/* System Prompt */}
+      {/* Custom Prompts */}
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Code className="w-5 h-5 text-purple-400" />
-            <h3 className="font-bold">System Prompt</h3>
-          </div>
+          <button 
+            onClick={() => toggleSection('prompts')}
+            className="w-full flex items-center justify-between"
+          >
+            <div className="flex items-center gap-3">
+              <Code className="w-5 h-5 text-purple-400" />
+              <h3 className="font-bold">التعليمات المخصصة (Prompts)</h3>
+            </div>
+            {expandedSections.has('prompts') ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </button>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <Textarea 
-            value={systemPrompt}
-            onChange={(e) => setSystemPrompt(e.target.value)}
-            rows={12}
-            className="font-mono text-sm"
-            placeholder="أدخل System Prompt هنا..."
-          />
-          <div className="p-4 bg-slate-800/50 rounded-lg">
-            <h4 className="font-medium mb-2 flex items-center gap-2">
-              <Shield className="w-4 h-4 text-amber-400" />
-              ملاحظات:
-            </h4>
-            <ul className="space-y-1 text-sm text-slate-400">
-              <li>• هذا هو التعليمات التي يتبعها menzo-ai</li>
-              <li>• يمكنك تخصيص شخصية المساعد حسب رغبتك</li>
-              <li>• تأكد من وضوح التعليمات للحصول على أفضل النتائج</li>
-            </ul>
-          </div>
-        </CardContent>
+        
+        {expandedSections.has('prompts') && (
+          <CardContent className="space-y-6">
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <Bot className="w-4 h-4" />
+                  Prompt المساعد الذكي
+                </label>
+                <Badge variant="info">يستخدم في المحادثات</Badge>
+              </div>
+              <Textarea 
+                value={customPrompt}
+                onChange={(e) => setCustomPrompt(e.target.value)}
+                rows={10}
+                className="font-mono text-sm"
+                placeholder="أدخل التعليمات التي يتبعها المساعد الذكي..."
+              />
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-sm font-medium flex items-center gap-2">
+                  <FileText className="w-4 h-4" />
+                  Prompt الاختبارات
+                </label>
+                <Badge variant="info">يستخدم في توليد الاختبارات</Badge>
+              </div>
+              <Textarea 
+                value={testPrompt}
+                onChange={(e) => setTestPrompt(e.target.value)}
+                rows={10}
+                className="font-mono text-sm"
+                placeholder="أدخل تعليمات توليد الاختبارات..."
+              />
+              <p className="text-xs text-slate-400 mt-2">
+                المتغيرات المتاحة: {'{subject}'} للمادة، {'{count}'} للعدد، {'{difficulty}'} للصعوبة، {'{time}'} للوقت
+              </p>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
-      {/* Quick Actions */}
-      <Card>
+      {/* Test Page Settings */}
+      <Card className={showTestPage ? 'border-amber-500/30' : ''}>
         <CardHeader>
-          <div className="flex items-center gap-3">
-            <Sparkles className="w-5 h-5 text-pink-400" />
-            <h3 className="font-bold">إجراءات سريعة</h3>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-amber-400" />
+              <h3 className="font-bold">صفحة الاختبارات بالذكاء الاصطناعي</h3>
+            </div>
+            <button
+              onClick={() => setShowTestPage(!showTestPage)}
+              className={`p-2 rounded-lg transition-all ${
+                showTestPage 
+                  ? 'bg-amber-500/20 text-amber-400' 
+                  : 'bg-slate-700 text-slate-400'
+              }`}
+            >
+              {showTestPage ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
+            </button>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-              <MessageSquare className="w-6 h-6" />
-              <span className="text-sm">اختبار المحادثة</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-              <BookOpen className="w-6 h-6" />
-              <span className="text-sm">قوالب جاهزة</span>
-            </Button>
-            <Button variant="outline" className="h-auto py-4 flex-col gap-2">
-              <Brain className="w-6 h-6" />
-              <span className="text-sm">سجل المحادثات</span>
-            </Button>
-          </div>
+          <p className="text-sm text-slate-400">
+            {showTestPage 
+              ? 'صفحة الاختبارات ستظهر في الشريط الجانبي للطلاب'
+              : 'صفحة الاختبارات لن تظهر في الموقع'}
+          </p>
         </CardContent>
       </Card>
 
       {/* Usage Stats */}
       <Card>
         <CardHeader>
-          <h3 className="font-bold">إحصائيات الاستخدام</h3>
+          <h3 className="font-bold flex items-center gap-2">
+            <Zap className="w-5 h-5 text-primary" />
+            إحصائيات الاستخدام
+          </h3>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="p-4 bg-slate-800/50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-primary">1,247</p>
+              <p className="text-2xl font-bold text-primary">0</p>
               <p className="text-xs text-slate-400">محادثة</p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-emerald-400">89</p>
+              <p className="text-2xl font-bold text-emerald-400">0</p>
               <p className="text-xs text-slate-400">اليوم</p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-amber-400">45,230</p>
-              <p className="text-xs text-slate-400">سؤال</p>
+              <p className="text-2xl font-bold text-amber-400">0</p>
+              <p className="text-xs text-slate-400">اختبار</p>
             </div>
             <div className="p-4 bg-slate-800/50 rounded-lg text-center">
-              <p className="text-2xl font-bold text-blue-400">92%</p>
-              <p className="text-xs text-slate-400">نسبة الرضا</p>
+              <p className="text-2xl font-bold text-blue-400">0</p>
+              <p className="text-xs text-slate-400">سؤال</p>
             </div>
           </div>
         </CardContent>
