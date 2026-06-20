@@ -8,71 +8,207 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  password      String
-  name          String
-  role          String    @default("STUDENT")
-  studentId     String?   @unique
-  phone         String?
-  parentName    String?
-  parentPhone   String?
-  avatar        String?
-  schoolYear    Int?
-  isVerified    Boolean   @default(false)
-  isActive      Boolean   @default(true)
-  otpCode       String?
-  otpExpiry     DateTime?
-  resetToken    String?
-  resetExpiry   DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id              String    @id @default(cuid())
+  email           String    @unique
+  password        String
+  name            String
+  role            String    @default("STUDENT")
+  studentId       String?   @unique
+  phone           String?
+  parentName      String?
+  parentPhone     String?
+  avatar          String?
+  schoolYear      Int?
+  isVerified      Boolean   @default(false)
+  isActive        Boolean   @default(true)
+  isAzhar         Boolean   @default(false)
+  otpCode         String?
+  otpExpiry       DateTime?
+  resetToken      String?
+  resetExpiry     DateTime?
+  walletBalance   Float     @default(0)
+  isForumBanned   Boolean   @default(false)
+  isCommentBanned Boolean   @default(false)
+  isAccountBanned Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
-  subscription    Subscription?
-  enrollments     Enrollment[]
-  progress        Progress[]
-  messagesSent    Message[]        @relation("SentMessages")
-  messagesReceived Message[]       @relation("ReceivedMessages")
-  notifications   Notification[]
-  activities      ActivityLog[]
-  examResults     ExamResult[]
-  ticketMessages  TicketMessage[]
-  tickets         Ticket[]
+  subscription       Subscription?
+  enrollments        Enrollment[]
+  progress           Progress[]
+  messagesSent       Message[]           @relation("SentMessages")
+  messagesReceived   Message[]           @relation("ReceivedMessages")
+  notifications      Notification[]
+  activities         ActivityLog[]
+  examResults        ExamResult[]
+  ticketMessages     TicketMessage[]
+  tickets            Ticket[]
+  walletTransactions WalletTransaction[]
+  aiConversations    AIConversation[]
+  aiMessages         AIMessage[]
+  lectureComments    LectureComment[]
+  lectureLikes       LectureLike[]
+  commentReplies     CommentReply[]
+  commentLikes       CommentLike[]
+  aiTestResults      AIExamResult[]
+  forumPosts         ForumPost[]
+  forumReplies       ForumReply[]
+  forumLikes         ForumLike[]
+  codeUsages         CodeUsage[]
+  CourseComment      CourseComment[]
+  CourseLike         CourseLike[]
+}
+
+model AISettings {
+  id           String   @id @default(cuid())
+  isEnabled    Boolean  @default(true)
+  service      String   @default("openai")
+  model        String   @default("gpt-4o-mini")
+  apiKey       String?
+  searchEngine String?
+  searchApiKey String?
+  customPrompt String?
+  testPrompt   String?
+  showTestPage Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+}
+
+model AIConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  isPinned  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages AIMessage[]
+}
+
+model AIMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  content        String
+  attachments    String?
+  isDeepThinking Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+}
+
+model AIExamResult {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subject     String
+  questions   String
+  answers     String?
+  score       Float?
+  difficulty  String?
+  timeTaken   Int?
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
 }
 
 model Subscription {
-  id            String    @id @default(cuid())
-  userId        String    @unique
-  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  plan          String    @default("MONTHLY")
-  status        String    @default("ACTIVE")
-  startDate     DateTime
-  endDate       DateTime
-  autoRenew     Boolean   @default(true)
-  createdAt     DateTime  @default(now())
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan      String   @default("MONTHLY")
+  status    String   @default("ACTIVE")
+  type      String   @default("general")
+  startDate DateTime
+  endDate   DateTime
+  autoRenew Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
+model WalletTransaction {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount      Float
+  type        String
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Code {
+  id           String    @id @default(cuid())
+  code         String    @unique
+  type         String
+  discountType String    @default("percentage")
+  discount     Float
+  maxUses      Int
+  currentUses  Int       @default(0)
+  courseId     String?
+  lectureId    String?
+  expiresAt    DateTime?
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+
+  usages CodeUsage[]
+}
+
+model CodeUsage {
+  id     String   @id @default(cuid())
+  codeId String
+  code   Code     @relation(fields: [codeId], references: [id], onDelete: Cascade)
+  userId String
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  usedAt DateTime @default(now())
+}
+
+model PlatformSettings {
+  id              String   @id @default(cuid())
+  platformName    String   @default("GELVANO")
+  platformLogo    String?
+  teacherName     String?
+  teacherAvatar   String?
+  teacherBio      String?
+  supportPhone    String?
+  supportEmail    String?
+  facebookLink    String?
+  instagramLink   String?
+  tiktokLink      String?
+  youtubeLink     String?
+  heroTitle       String?
+  heroSubtitle    String?
+  heroImage       String?
+  aboutText       String?
+  isWalletEnabled Boolean  @default(true)
+  isCodesEnabled  Boolean  @default(true)
+  updatedAt       DateTime @updatedAt
 }
 
 model Course {
-  id          String    @id @default(cuid())
+  id          String   @id @default(cuid())
   title       String
   description String
   thumbnail   String?
   grade       Int
-  price       Float     @default(0)
-  isPublished Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  type        String   @default("general")
+  price       Float    @default(0)
+  isPublished Boolean  @default(false)
+  isAiEnabled Boolean  @default(true)
+  aiPrompt    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   chapters    Chapter[]
   enrollments Enrollment[]
   purchases   Purchase[]
   exams       Exam[]
+  comments    CourseComment[]
+  likes       CourseLike[]
 }
 
 model Chapter {
-  id       String    @id @default(cuid())
+  id       String @id @default(cuid())
   courseId String
-  course   Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
   title    String
   order    Int
 
@@ -80,45 +216,129 @@ model Chapter {
 }
 
 model Lecture {
-  id          String    @id @default(cuid())
-  chapterId   String
-  chapter     Chapter   @relation(fields: [chapterId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  videoUrl    String
-  pdfUrl      String?
-  duration    Int?
-  order       Int
-  isFree      Boolean   @default(false)
-  createdAt   DateTime  @default(now())
+  id                String   @id @default(cuid())
+  chapterId         String
+  chapter           Chapter  @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  title             String
+  description       String?
+  videoUrl          String
+  pdfUrl            String?
+  duration          Int?
+  order             Int
+  isFree            Boolean  @default(false)
+  isCommentsEnabled Boolean  @default(true)
+  isLikesEnabled    Boolean  @default(true)
+  aiPrompt          String?
+  createdAt         DateTime @default(now())
 
-  progress    Progress[]
-  purchases   Purchase[]
+  progress  Progress[]
+  purchases Purchase[]
+  comments  LectureComment[]
+  likes     LectureLike[]
+}
+
+model LectureComment {
+  id        String        @id @default(cuid())
+  lectureId String
+  lecture   Lecture       @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  image     String?
+  likes     CommentLike[]
+  isLiked   Boolean       @default(false)
+  likeCount Int           @default(0)
+  createdAt DateTime      @default(now())
+
+  replies CommentReply[]
+}
+
+model CommentReply {
+  id        String         @id @default(cuid())
+  commentId String
+  comment   LectureComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  image     String?
+  isLiked   Boolean        @default(false)
+  likeCount Int            @default(0)
+  createdAt DateTime       @default(now())
+
+  replies  CommentReply[] @relation("NestedReplies")
+  parent   CommentReply?  @relation("NestedReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId String?
+}
+
+model LectureLike {
+  id        String   @id @default(cuid())
+  lectureId String
+  lecture   Lecture  @relation(fields: [lectureId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([lectureId, userId])
+}
+
+model CommentLike {
+  id             String         @id @default(cuid())
+  commentId      String
+  lectureComment LectureComment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isReply        Boolean        @default(false)
+  replyId        String?
+  createdAt      DateTime       @default(now())
+
+  @@unique([commentId, userId, replyId])
+}
+
+model CourseComment {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  image     String?
+  createdAt DateTime @default(now())
+}
+
+model CourseLike {
+  id        String   @id @default(cuid())
+  courseId  String
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([courseId, userId])
 }
 
 model Enrollment {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   courseId  String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  progress  Float     @default(0)
-  createdAt DateTime  @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress  Float    @default(0)
+  createdAt DateTime @default(now())
 
   @@unique([userId, courseId])
 }
 
 model Purchase {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
   courseId  String?
   lectureId String?
   amount    Float
-  status    String    @default("completed")
-  createdAt DateTime  @default(now())
+  status    String   @default("completed")
+  createdAt DateTime @default(now())
 
-  course    Course?   @relation(fields: [courseId], references: [id])
-  lecture   Lecture?  @relation(fields: [lectureId], references: [id])
+  course  Course?  @relation(fields: [courseId], references: [id])
+  lecture Lecture? @relation(fields: [lectureId], references: [id])
 }
 
 model Progress {
@@ -136,89 +356,134 @@ model Progress {
 }
 
 model Exam {
-  id           String    @id @default(cuid())
+  id           String   @id @default(cuid())
   courseId     String
-  course       Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
   chapterId    String?
   title        String
-  type         String    @default("QUIZ")
+  type         String   @default("QUIZ")
   duration     Int?
-  passingScore Int       @default(60)
+  passingScore Int      @default(60)
   questions    String
-  createdAt    DateTime  @default(now())
+  createdAt    DateTime @default(now())
 
-  results      ExamResult[]
+  results ExamResult[]
 }
 
 model ExamResult {
-  id        String    @id @default(cuid())
-  userId    String
-  examId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exam      Exam      @relation(fields: [examId], references: [id], onDelete: Cascade)
-  score     Float
+  id             String   @id @default(cuid())
+  userId         String
+  examId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exam           Exam     @relation(fields: [examId], references: [id], onDelete: Cascade)
+  score          Float
   totalQuestions Int
   correctAnswers Int
-  answers   String
-  timeTaken Int?
-  createdAt DateTime  @default(now())
+  answers        String
+  timeTaken      Int?
+  createdAt      DateTime @default(now())
 }
 
 model Message {
-  id           String    @id @default(cuid())
-  senderId     String
-  receiverId   String
-  content      String
-  attachments  String?
-  isRead       Boolean   @default(false)
-  createdAt    DateTime  @default(now())
+  id          String   @id @default(cuid())
+  senderId    String
+  receiverId  String
+  content     String
+  attachments String?
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
 
-  sender       User      @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
-  receiver     User      @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
+  sender   User @relation("SentMessages", fields: [senderId], references: [id], onDelete: Cascade)
+  receiver User @relation("ReceivedMessages", fields: [receiverId], references: [id], onDelete: Cascade)
 }
 
 model Notification {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
   title     String
   message   String
   data      String?
-  isRead    Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 model ActivityLog {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   action    String
   details   String?
   ipAddress String?
-  createdAt DateTime  @default(now())
+  createdAt DateTime @default(now())
 }
 
 model Ticket {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category  String
-  priority  String    @default("medium")
-  status    String    @default("open")
+  priority  String   @default("medium")
+  status    String   @default("open")
   subject   String
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  messages  TicketMessage[]
+  messages TicketMessage[]
 }
 
 model TicketMessage {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   ticketId  String
   ticket    Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
   senderId  String
   user      User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
   content   String
+  createdAt DateTime @default(now())
+}
+
+model ForumPost {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  content    String
+  image      String?
+  replyCount Int      @default(0)
+  likeCount  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  replies ForumReply[]
+  likes   ForumLike[]
+}
+
+model ForumReply {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content   String
+  image     String?
+  parentId  String?
+  likeCount Int       @default(0)
   createdAt DateTime  @default(now())
+
+  replies ForumReply[] @relation("ReplyReplies")
+  parent  ForumReply?  @relation("ReplyReplies", fields: [parentId], references: [id], onDelete: Cascade)
+}
+
+model ForumLike {
+  id        String    @id @default(cuid())
+  postId    String
+  post      ForumPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isReply   Boolean   @default(false)
+  replyId   String?
+  createdAt DateTime  @default(now())
+
+  @@unique([postId, userId, replyId])
 }

@@ -25,8 +25,23 @@ import {
   Trash2,
   RefreshCw,
   Eye,
-  ZoomIn
+  ZoomIn,
+  Mic,
+  MicOff,
+  StopCircle,
+  Sparkle,
+  MessageSquare,
+  History,
+  Edit3,
+  Check,
+  Clock,
+  ChevronRight,
+  MoreVertical,
+  Pencil,
+  Wand2,
+  Volume2
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface Message {
   id: string
@@ -34,6 +49,7 @@ interface Message {
   content: string
   timestamp: Date
   attachments?: Attachment[]
+  isDeepThinking?: boolean
 }
 
 interface Attachment {
@@ -44,50 +60,64 @@ interface Attachment {
   ocrText?: string
 }
 
+interface Conversation {
+  id: string
+  title: string
+  updatedAt: Date
+}
+
+interface Suggestion {
+  id: string
+  text: string
+  icon: typeof Atom
+}
+
 const quickQuestions = [
-  { icon: Atom, text: 'ما هي قوانين نيوتن للحركة؟' },
-  { icon: Calculator, text: 'احسب تسارع جسم كتلته 10kg تؤثر عليه قوة 50N' },
-  { icon: Lightbulb, text: 'اشرح ظاهرة انكسار الضوء' },
-  { icon: BookOpen, text: 'ما الفرق بين الشغل والطاقة؟' }
+  { id: '1', icon: Atom, text: 'ما هي قوانين نيوتن للحركة؟' },
+  { id: '2', icon: Calculator, text: 'احسب تسارع جسم كتلته 10kg تؤثر عليه قوة 50N' },
+  { id: '3', icon: Lightbulb, text: 'اشرح ظاهرة انكسار الضوء' },
+  { id: '4', icon: BookOpen, text: 'ما الفرق بين الشغل والطاقة؟' }
+]
+
+const aiSuggestions: Suggestion[] = [
+  { id: '1', text: 'اشرح لي هذا المفهوم أكثر', icon: Lightbulb },
+  { id: '2', text: 'اعطني مثال تطبيقي', icon: Calculator },
+  { id: '3', text: 'ما العلاقة بين هذا و...؟', icon: Atom },
+  { id: '4', text: 'اكتب سؤال آخر مشابه', icon: Sparkle }
 ]
 
 const API_KEY = 'sk-ws-H.IEXIRX.xZzz.MEUCIAuCHhQGRQI9u1slDWDIOqggbcUHIpbD1TfqRXamk_2bAiEAiTOjCDkdvfPV6oX3Q98gwTE9yi1e6B27xpUSAUkh1U8'
 const API_HOST = 'https://ws-2yatkvgy5gz29uxu.ap-southeast-1.maas.aliyuncs.com'
 
 export default function AITutorPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      role: 'assistant',
-      content: `مرحباً! أنا **menzo-ai** 👋
-
-المساعد الذكي المتخصص في الفيزياء 🌟
-
-**أستطيع مساعدتك في:**
-
-🔬 شرح المفاهيم الفيزيائية
-🔢 حل المسائل الرياضية خطوة بخطوة
-📝 شرح النظريات والقوانين بالصيغ الرياضية
-📸 قراءة النصوص من الصور (OCR) - حتى بخط اليد!
-📄 تحليل الملفات المرفوعة
-💡 نصائح للاختبارات
-
-**كيف تستخدميني:**
-1. اكتب سؤالك أو ارفع صورة
-2. يمكنني قراءة النصوص من الصور حتى لو كانت بخط اليد!
-3. سأساعدك على فهم الفيزياء بسهولة
-
-ابدأ الآن! 🚀`,
-      timestamp: new Date()
-    }
-  ])
+  // Messages state
+  const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState('')
   const [isTyping, setIsTyping] = useState(false)
+  const [isDeepThinking, setIsDeepThinking] = useState(false)
   const [attachments, setAttachments] = useState<Attachment[]>([])
   const [uploading, setUploading] = useState(false)
   const [selectedImage, setSelectedImage] = useState<string | null>(null)
+  
+  // Voice state
+  const [isRecording, setIsRecording] = useState(false)
+  const [isSpeaking, setIsSpeaking] = useState(false)
+  const [recognition, setRecognition] = useState<any>(null)
+  
+  // Conversations state
+  const [conversations, setConversations] = useState<Conversation[]>([])
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+  const [isEditingTitle, setIsEditingTitle] = useState(false)
+  const [editedTitle, setEditedTitle] = useState('')
+  const [showHistory, setShowHistory] = useState(false)
+  
+  // Suggestions state
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  
+  // Refs
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -95,7 +125,137 @@ export default function AITutorPage() {
 
   useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, showSuggestions])
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined' && ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      const recognitionInstance = new SpeechRecognition()
+      recognitionInstance.continuous = false
+      recognitionInstance.interimResults = true
+      recognitionInstance.lang = 'ar-SA'
+      
+      recognitionInstance.onresult = (event: any) => {
+        const transcript = Array.from(event.results)
+          .map((result: any) => result[0].transcript)
+          .join('')
+        setInputValue(transcript)
+      }
+      
+      recognitionInstance.onerror = () => {
+        setIsRecording(false)
+        toast.error('حدث خطأ في التعرف على الصوت')
+      }
+      
+      recognitionInstance.onend = () => {
+        setIsRecording(false)
+      }
+      
+      setRecognition(recognitionInstance)
+    }
+  }, [])
+
+  const startRecording = () => {
+    if (recognition) {
+      recognition.start()
+      setIsRecording(true)
+      toast.success('جاري التسجيل... تحدث الآن')
+    } else {
+      toast.error('التعرف على الصوت غير مدعوم في متصفحك')
+    }
+  }
+
+  const stopRecording = () => {
+    if (recognition) {
+      recognition.stop()
+      setIsRecording(false)
+    }
+  }
+
+  const speakText = (text: string) => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.lang = 'ar-SA'
+      utterance.rate = 0.9
+      utterance.onend = () => setIsSpeaking(false)
+      setIsSpeaking(true)
+      speechSynthesis.speak(utterance)
+    }
+  }
+
+  const stopSpeaking = () => {
+    speechSynthesis.cancel()
+    setIsSpeaking(false)
+  }
+
+  const createNewConversation = () => {
+    const newConv: Conversation = {
+      id: Date.now().toString(),
+      title: 'محادثة جديدة',
+      updatedAt: new Date()
+    }
+    setConversations(prev => [newConv, ...prev])
+    setCurrentConversationId(newConv.id)
+    setMessages([])
+    setShowHistory(false)
+  }
+
+  const selectConversation = (conv: Conversation) => {
+    setCurrentConversationId(conv.id)
+    setShowHistory(false)
+    setMessages([])
+  }
+
+  const deleteConversation = (convId: string) => {
+    setConversations(prev => prev.filter(c => c.id !== convId))
+    if (currentConversationId === convId) {
+      setCurrentConversationId(null)
+      setMessages([])
+    }
+  }
+
+  const updateConversationTitle = (convId: string, newTitle: string) => {
+    setConversations(prev => prev.map(c => 
+      c.id === convId ? { ...c, title: newTitle, updatedAt: new Date() } : c
+    ))
+    setIsEditingTitle(false)
+  }
+
+  const regenerateResponse = async () => {
+    if (messages.length < 2) return
+    
+    const lastAiIndex = messages.length - 1
+    if (messages[lastAiIndex].role === 'assistant') {
+      const newMessages = messages.slice(0, -1)
+      setMessages(newMessages)
+      
+      const lastUserMessage = newMessages[newMessages.length - 1]
+      if (lastUserMessage && lastUserMessage.role === 'user') {
+        setIsTyping(true)
+        setShowSuggestions(false)
+        
+        setTimeout(() => {
+          const aiMessage: Message = {
+            id: (Date.now() + 1).toString(),
+            role: 'assistant',
+            content: generateFallbackResponse(lastUserMessage.content, []),
+            timestamp: new Date(),
+            isDeepThinking
+          }
+          setMessages(prev => [...prev, aiMessage])
+          setShowSuggestions(true)
+          setIsTyping(false)
+        }, 2000)
+      }
+    }
+  }
+
+  const editMessage = (messageId: string, newContent: string) => {
+    setMessages(prev => prev.map(m => 
+      m.id === messageId ? { ...m, content: newContent } : m
+    ))
+  }
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
