@@ -28,41 +28,113 @@ import {
   ChevronUp,
   FileText,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Server,
+  Cpu,
+  Database,
+  ExternalLink,
+  Loader2
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 // AI Services with their free models
-const AI_SERVICES: Record<string, { name: string; icon: string; freeModels: string[] }> = {
-  openai: { name: 'OpenAI', icon: '🤖', freeModels: ['gpt-4o-mini', 'gpt-4o', 'gpt-4-turbo'] },
-  anthropic: { name: 'Anthropic', icon: '🧠', freeModels: ['claude-3-haiku', 'claude-3-sonnet', 'claude-3-opus'] },
-  deepseek: { name: 'DeepSeek', icon: '🔮', freeModels: ['deepseek-chat', 'deepseek-coder'] },
-  google: { name: 'Google Gemini', icon: '✨', freeModels: ['gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-pro'] },
-  minimax: { name: 'MiniMax', icon: '🔢', freeModels: ['abab6-chat', 'abab5.5-chat'] },
-  moonshot: { name: 'Moonshot', icon: '🌙', freeModels: ['moonshot-v1-8k', 'moonshot-v1-32k'] },
-  openrouter: { name: 'OpenRouter', icon: '🛤️', freeModels: ['openrouter/auto', 'openai/gpt-4o-mini'] },
-  groq: { name: 'Groq', icon: '⚡', freeModels: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile'] },
-  cohere: { name: 'Cohere', icon: '🌊', freeModels: ['command-r-plus', 'command-r'] },
-  deepinfra: { name: 'DeepInfra', icon: '🔧', freeModels: ['meta-llama/Llama-3.1-8B-Instruct'] },
+const AI_SERVICES: Record<string, { name: string; icon: string; freeModels: string[]; allModels?: string[] }> = {
+  openai: { 
+    name: 'OpenAI', 
+    icon: '🤖', 
+    freeModels: ['gpt-4o-mini', 'gpt-4o'], 
+    allModels: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'] 
+  },
+  anthropic: { 
+    name: 'Anthropic', 
+    icon: '🧠', 
+    freeModels: ['claude-3-5-sonnet-latest', 'claude-3-haiku-latest'], 
+    allModels: ['claude-3-5-sonnet-latest', 'claude-3-5-sonnet-20240620', 'claude-3-opus-latest', 'claude-3-haiku-latest'] 
+  },
+  deepseek: { 
+    name: 'DeepSeek', 
+    icon: '🔮', 
+    freeModels: ['deepseek-chat'], 
+    allModels: ['deepseek-chat', 'deepseek-coder'] 
+  },
+  gemini: { 
+    name: 'Gemini', 
+    icon: '✨', 
+    freeModels: ['gemini-1.5-flash', 'gemini-1.5-pro'], 
+    allModels: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-1.0-pro', 'gemini-pro'] 
+  },
+  azure: { 
+    name: 'Azure AI', 
+    icon: '☁️', 
+    freeModels: ['gpt-4', 'gpt-4-turbo', 'gpt-35-turbo'], 
+    allModels: ['gpt-4', 'gpt-4-turbo', 'gpt-35-turbo'] 
+  },
+  cohere: { 
+    name: 'Cohere', 
+    icon: '🌊', 
+    freeModels: ['command-r-plus', 'command-r'], 
+    allModels: ['command-r-plus', 'command-r', 'command'] 
+  },
+  groq: { 
+    name: 'Groq', 
+    icon: '⚡', 
+    freeModels: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768'], 
+    allModels: ['llama-3.1-8b-instant', 'llama-3.1-70b-versatile', 'mixtral-8x7b-32768'] 
+  },
+  openrouter: { 
+    name: 'OpenRouter', 
+    icon: '🛤️', 
+    freeModels: ['openrouter/auto', 'openai/gpt-4o-mini', 'anthropic/claude-3-haiku'], 
+    allModels: ['openrouter/auto', 'openai/gpt-4o-mini', 'anthropic/claude-3-haiku'] 
+  },
+  fireworks: { 
+    name: 'Fireworks AI', 
+    icon: '🎆', 
+    freeModels: ['accounts/fireworks/models/llama-v3-8b-instruct'], 
+    allModels: ['accounts/fireworks/models/llama-v3-8b-instruct', 'accounts/fireworks/models/llama-v3-70b-instruct'] 
+  },
+  together: { 
+    name: 'Together AI', 
+    icon: '🤝', 
+    freeModels: ['togethercomputer/llama-3-8b-chat-hf', 'togethercomputer/llama-3-70b-chat-hf'], 
+    allModels: ['togethercomputer/llama-3-8b-chat-hf', 'togethercomputer/llama-3-70b-chat-hf'] 
+  },
 }
 
 // Search Engines
 const SEARCH_ENGINES = [
-  { id: 'serper', name: 'Serper API', needsApiKey: true },
-  { id: 'tavily', name: 'Tavily AI', needsApiKey: true },
-  { id: 'jina', name: 'Jina AI Reader', needsApiKey: false },
-  { id: 'exa', name: 'Exa AI', needsApiKey: true },
-  { id: 'ddgs', name: 'DDGS (DuckDuckGo)', needsApiKey: false },
-  { id: 'searxng', name: 'SearXNG', needsApiKey: false },
-  { id: 'none', name: 'بدون بحث', needsApiKey: false },
+  { id: 'serper', name: 'Serper API', needsApiKey: true, url: 'https://serper.dev' },
+  { id: 'tavily', name: 'Tavily AI', needsApiKey: true, url: 'https://tavily.com' },
+  { id: 'jina', name: 'Jina AI Reader', needsApiKey: false, url: 'https://jina.ai/reader' },
+  { id: 'exa', name: 'Exa AI', needsApiKey: true, url: 'https://exa.ai' },
+  { id: 'ddgs', name: 'DDGS (DuckDuckGo)', needsApiKey: false, url: 'https://github.com/deedy5/ddgs' },
+  { id: 'searxng', name: 'SearXNG', needsApiKey: false, url: 'https://github.com/searxng/searxng' },
+  { id: 'none', name: 'بدون بحث', needsApiKey: false, url: '' },
 ]
+
+interface AISettingsData {
+  isEnabled: boolean
+  service: string
+  model: string
+  freeModels: string[]
+  apiKey: string
+  searchEngine: string
+  searchApiKey: string
+  customPrompt: string
+  testPrompt: string
+  showTestPage: boolean
+  deepThinkingModels: string[]
+}
 
 export default function AdminAISettingsPage() {
   // Main settings
   const [isEnabled, setIsEnabled] = useState(true)
   const [service, setService] = useState('openai')
   const [model, setModel] = useState('gpt-4o-mini')
+  const [freeModels, setFreeModels] = useState<string[]>([])
   const [apiKey, setApiKey] = useState('')
   const [showApiKey, setShowApiKey] = useState(false)
+  const [deepThinkingModels, setDeepThinkingModels] = useState<string[]>([])
   
   // Search settings
   const [searchEngine, setSearchEngine] = useState('none')
@@ -85,7 +157,7 @@ export default function AdminAISettingsPage() {
 - المادة: {subject}
 - عدد الأسئلة: {count}
 - مستوى الصعوبة: {difficulty}
-- الوقت: {time} دقائق
+- الوصف: {description}
 
 يجب أن يكون الاختبار:
 1. متعدد الاختيارات (4 خيارات)
@@ -113,7 +185,37 @@ export default function AdminAISettingsPage() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null)
   const [saving, setSaving] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['main', 'search', 'prompts']))
+  const [loading, setLoading] = useState(true)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['main', 'search', 'prompts', 'test']))
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings()
+  }, [])
+
+  const loadSettings = async () => {
+    try {
+      const response = await fetch('/api/admin/ai-settings')
+      if (response.ok) {
+        const data = await response.json()
+        setIsEnabled(data.isEnabled ?? true)
+        setService(data.service || 'openai')
+        setModel(data.model || 'gpt-4o-mini')
+        setFreeModels(data.freeModels ? JSON.parse(data.freeModels) : [])
+        setApiKey(data.apiKey || '')
+        setSearchEngine(data.searchEngine || 'none')
+        setSearchApiKey(data.searchApiKey || '')
+        setCustomPrompt(data.customPrompt || '')
+        setTestPrompt(data.testPrompt || '')
+        setShowTestPage(data.showTestPage ?? true)
+        setDeepThinkingModels(data.deepThinkingModels ? JSON.parse(data.deepThinkingModels) : [])
+      }
+    } catch (error) {
+      console.error('Error loading AI settings:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const toggleSection = (section: string) => {
     const newExpanded = new Set(expandedSections)
@@ -127,7 +229,11 @@ export default function AdminAISettingsPage() {
 
   const handleServiceChange = (newService: string) => {
     setService(newService)
-    setModel(AI_SERVICES[newService]?.freeModels[0] || '')
+    const serviceData = AI_SERVICES[newService]
+    if (serviceData) {
+      setModel(serviceData.freeModels[0] || '')
+      setFreeModels(serviceData.freeModels)
+    }
   }
 
   const handleTestAPI = async () => {
@@ -135,18 +241,35 @@ export default function AdminAISettingsPage() {
     setTestResult(null)
     
     try {
-      // Simulate API test
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      setTestResult({
-        success: true,
-        message: `تم الاتصال بنجاح بخدمة ${AI_SERVICES[service]?.name || service}!`
+      const response = await fetch('/api/admin/ai-settings/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          service,
+          model,
+          apiKey,
+          searchEngine,
+          searchApiKey
+        })
       })
-    } catch (error) {
+      
+      if (response.ok) {
+        const data = await response.json()
+        setTestResult({
+          success: true,
+          message: data.message || `تم الاتصال بنجاح بخدمة ${AI_SERVICES[service]?.name || service}!`
+        })
+        toast.success('تم اختبار الاتصال بنجاح!')
+      } else {
+        const error = await response.json()
+        throw new Error(error.message || 'فشل الاتصال')
+      }
+    } catch (error: any) {
       setTestResult({
         success: false,
-        message: 'فشل الاتصال. تأكد من صحة API Key.'
+        message: error.message || 'فشل الاتصال. تأكد من صحة API Key.'
       })
+      toast.error('فشل الاتصال بالخدمة')
     }
     
     setTesting(false)
@@ -163,22 +286,24 @@ export default function AdminAISettingsPage() {
           isEnabled,
           service,
           model,
+          freeModels: JSON.stringify(freeModels),
           apiKey,
           searchEngine,
           searchApiKey,
           customPrompt,
           testPrompt,
-          showTestPage
+          showTestPage,
+          deepThinkingModels: JSON.stringify(deepThinkingModels)
         })
       })
       
       if (response.ok) {
-        alert('تم حفظ الإعدادات بنجاح!')
+        toast.success('تم حفظ الإعدادات بنجاح!')
       } else {
         throw new Error('Failed to save')
       }
     } catch (error) {
-      alert('حدث خطأ أثناء الحفظ')
+      toast.error('حدث خطأ أثناء الحفظ')
     }
     
     setSaving(false)
@@ -193,11 +318,22 @@ export default function AdminAISettingsPage() {
       setSearchEngine('none')
       setSearchApiKey('')
       setShowTestPage(true)
+      setFreeModels([])
+      setDeepThinkingModels([])
+      toast.success('تم إعادة تعيين الإعدادات')
     }
   }
 
-  const currentService = AI_SERVICES[service] || { name: service, freeModels: [] }
+  const currentService = AI_SERVICES[service] || { name: service, freeModels: [], allModels: [] }
   const currentSearchEngine = SEARCH_ENGINES.find(e => e.id === searchEngine)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -208,18 +344,18 @@ export default function AdminAISettingsPage() {
             <Brain className="w-7 h-7 text-primary" />
             إعدادات الذكاء الاصطناعي
           </h1>
-          <p className="text-slate-400">إدارة المساعد الذكي وخدمة الاختبارات</p>
+          <p className="text-slate-400">إدارة المساعد الذكي وخدمة الاختبارات والبحث</p>
         </div>
         <div className="flex gap-3">
           <Button variant="outline" onClick={handleReset}>
-            <RotateCcw className="w-4 h-4" />
+            <RotateCcw className="w-4 h-4 ml-2" />
             إعادة تعيين
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
             {saving ? (
-              <span className="animate-spin">⏳</span>
+              <Loader2 className="w-4 h-4 ml-2 animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <Save className="w-4 h-4 ml-2" />
             )}
             حفظ التغييرات
           </Button>
@@ -243,8 +379,8 @@ export default function AdminAISettingsPage() {
                 </h3>
                 <p className="text-sm text-slate-400">
                   {isEnabled 
-                    ? 'الذكاء الاصطناعي يعمل في الموقع - يظهر في القائمة الجانبية وصفحات الكورسات'
-                    : 'الذكاء الاصطناعي معطل - لن يظهر في أي مكان في الموقع'}
+                    ? 'يمكن للطلاب استخدام المساعد الذكي في الموقع'
+                    : 'تم تعطيل المساعد الذكي - لن يظهر في الموقع'}
                 </p>
               </div>
             </div>
@@ -252,8 +388,8 @@ export default function AdminAISettingsPage() {
               onClick={() => setIsEnabled(!isEnabled)}
               className={`p-3 rounded-xl transition-all ${
                 isEnabled 
-                  ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' 
-                  : 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                  ? 'bg-emerald-500/20 text-emerald-400' 
+                  : 'bg-red-500/20 text-red-400'
               }`}
             >
               {isEnabled ? <ToggleRight className="w-10 h-10" /> : <ToggleLeft className="w-10 h-10" />}
@@ -262,7 +398,7 @@ export default function AdminAISettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Main Settings */}
+      {/* AI Service Selection */}
       <Card>
         <CardHeader>
           <button 
@@ -270,8 +406,8 @@ export default function AdminAISettingsPage() {
             className="w-full flex items-center justify-between"
           >
             <div className="flex items-center gap-3">
-              <Settings className="w-5 h-5 text-primary" />
-              <h3 className="font-bold">إعدادات الخدمة والنموذج</h3>
+              <Server className="w-5 h-5 text-blue-400" />
+              <h3 className="font-bold">اختيار خدمة الذكاء الاصطناعي</h3>
             </div>
             {expandedSections.has('main') ? (
               <ChevronUp className="w-5 h-5" />
@@ -283,21 +419,21 @@ export default function AdminAISettingsPage() {
         
         {expandedSections.has('main') && (
           <CardContent className="space-y-6">
-            {/* Service Selection */}
+            {/* Service Grid */}
             <div>
-              <label className="block text-sm font-medium mb-3">اختر الخدمة</label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <label className="block text-sm font-medium mb-3">الخدمة</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 {Object.entries(AI_SERVICES).map(([key, data]) => (
                   <button
                     key={key}
                     onClick={() => handleServiceChange(key)}
-                    className={`p-4 rounded-xl border-2 transition-all flex flex-col items-center gap-2 ${
+                    className={`p-4 rounded-xl border-2 transition-all text-center ${
                       service === key 
-                        ? 'border-primary bg-primary/10' 
+                        ? 'border-blue-500 bg-blue-500/10' 
                         : 'border-slate-700 hover:border-slate-600'
                     }`}
                   >
-                    <span className="text-2xl">{data.icon}</span>
+                    <span className="text-3xl mb-2 block">{data.icon}</span>
                     <span className="text-sm font-medium">{data.name}</span>
                   </button>
                 ))}
@@ -306,22 +442,27 @@ export default function AdminAISettingsPage() {
 
             {/* Model Selection */}
             <div>
-              <label className="block text-sm font-medium mb-3">
-                النماذج المتاحة المجانية
-                <span className="text-slate-400 text-xs block">للخدمة: {currentService.name}</span>
+              <label className="block text-sm font-medium mb-3 flex items-center gap-2">
+                <Cpu className="w-4 h-4" />
+                النموذج
               </label>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                {currentService.freeModels.map((m) => (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {currentService.allModels?.map((m) => (
                   <button
                     key={m}
                     onClick={() => setModel(m)}
-                    className={`p-3 rounded-lg border-2 transition-all text-sm ${
+                    className={`p-3 rounded-lg border-2 transition-all text-sm text-right ${
                       model === m 
-                        ? 'border-primary bg-primary/10' 
+                        ? 'border-blue-500 bg-blue-500/10' 
                         : 'border-slate-700 hover:border-slate-600'
                     }`}
                   >
-                    {m}
+                    <div className="flex items-center justify-between">
+                      <span>{m}</span>
+                      {currentService.freeModels?.includes(m) && (
+                        <Badge variant="success" className="text-xs">مجاني</Badge>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -332,14 +473,14 @@ export default function AdminAISettingsPage() {
               <label className="block text-sm font-medium mb-2 flex items-center gap-2">
                 <Key className="w-4 h-4" />
                 API Key
-                <span className="text-xs text-slate-400">(لخدمة {currentService.name})</span>
+                <span className="text-xs text-slate-400">(لـ {currentService.name})</span>
               </label>
               <div className="relative">
                 <Input 
                   type={showApiKey ? 'text' : 'password'}
                   value={apiKey} 
                   onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="أدخل API Key هنا..."
+                  placeholder="أدخل API Key..."
                   className="pl-10"
                 />
                 <button
@@ -349,42 +490,73 @@ export default function AdminAISettingsPage() {
                   {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              <p className="text-xs text-slate-400 mt-2">
+                {currentService.name}
+              </p>
             </div>
 
-            {/* Test Connection */}
+            {/* Deep Thinking Models */}
+            <div>
+              <label className="block text-sm font-medium mb-3 flex items-center gap-2">
+                <Brain className="w-4 h-4 text-purple-400" />
+                نماذج التفكير العميق
+              </label>
+              <div className="p-4 bg-slate-800/50 rounded-lg">
+                <p className="text-sm text-slate-400 mb-3">
+                  حدد النماذج التي تدعم التفكير العميق (Deep Thinking). هذه النماذج ستظهر للمستخدمين خيار "التفكير العميق".
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {currentService.allModels?.map((m) => (
+                    <button
+                      key={m}
+                      onClick={() => {
+                        if (deepThinkingModels.includes(m)) {
+                          setDeepThinkingModels(prev => prev.filter(x => x !== m))
+                        } else {
+                          setDeepThinkingModels(prev => [...prev, m])
+                        }
+                      }}
+                      className={`px-3 py-2 rounded-lg border-2 transition-all text-sm flex items-center gap-2 ${
+                        deepThinkingModels.includes(m) 
+                          ? 'border-purple-500 bg-purple-500/10' 
+                          : 'border-slate-700 hover:border-slate-600'
+                      }`}
+                    >
+                      {deepThinkingModels.includes(m) && <CheckCircle className="w-4 h-4 text-purple-400" />}
+                      {m}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Test Button */}
             <Button 
-              variant="outline" 
-              onClick={handleTestAPI}
-              disabled={testing || !apiKey}
-              className="w-full md:w-auto"
+              onClick={handleTestAPI} 
+              disabled={testing}
+              variant="outline"
+              className="w-full"
             >
               {testing ? (
-                <>
-                  <span className="animate-spin">⏳</span>
-                  جاري الاختبار...
-                </>
+                <Loader2 className="w-4 h-4 ml-2 animate-spin" />
               ) : (
-                <>
-                  <TestTube className="w-4 h-4" />
-                  اختبار الاتصال
-                </>
+                <TestTube className="w-4 h-4 ml-2" />
               )}
+              اختبار الاتصال
             </Button>
 
             {testResult && (
-              <div className={`p-4 rounded-lg flex items-center gap-3 ${
-                testResult.success 
-                  ? 'bg-emerald-500/10 border border-emerald-500/20' 
-                  : 'bg-red-500/10 border border-red-500/20'
+              <div className={`p-4 rounded-lg ${
+                testResult.success ? 'bg-emerald-500/10 border border-emerald-500/30' : 'bg-red-500/10 border border-red-500/30'
               }`}>
-                {testResult.success ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0" />
-                ) : (
-                  <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-                )}
-                <span className={testResult.success ? 'text-emerald-400' : 'text-red-400'}>
-                  {testResult.message}
-                </span>
+                <div className="flex items-center gap-2">
+                  {testResult.success ? (
+                    <CheckCircle className="w-5 h-5 text-emerald-400" />
+                  ) : (
+                    <AlertCircle className="w-5 h-5 text-red-400" />
+                  )}
+                  <span>{testResult.message}</span>
+                </div>
               </div>
             )}
           </CardContent>
@@ -425,7 +597,20 @@ export default function AdminAISettingsPage() {
                         : 'border-slate-700 hover:border-slate-600'
                     }`}
                   >
-                    {engine.name}
+                    <div className="flex items-center justify-between">
+                      <span>{engine.name}</span>
+                      {engine.url && (
+                        <a 
+                          href={engine.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-slate-400 hover:text-white"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                    </div>
                   </button>
                 ))}
               </div>
@@ -525,9 +710,16 @@ export default function AdminAISettingsPage() {
                 className="font-mono text-sm"
                 placeholder="أدخل تعليمات توليد الاختبارات..."
               />
-              <p className="text-xs text-slate-400 mt-2">
-                المتغيرات المتاحة: {'{subject}'} للمادة، {'{count}'} للعدد، {'{difficulty}'} للصعوبة، {'{time}'} للوقت
-              </p>
+              <div className="p-3 bg-slate-800/50 rounded-lg mt-3">
+                <p className="text-xs text-slate-400 font-medium mb-2">المتغيرات المتاحة:</p>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="info">{'{subject}'} - المادة</Badge>
+                  <Badge variant="info">{'{count}'} - عدد الأسئلة</Badge>
+                  <Badge variant="info">{'{difficulty}'} - مستوى الصعوبة</Badge>
+                  <Badge variant="info">{'{time}'} - الوقت</Badge>
+                  <Badge variant="info">{'{description}'} - وصف الاختبار</Badge>
+                </div>
+              </div>
             </div>
           </CardContent>
         )}
@@ -536,37 +728,60 @@ export default function AdminAISettingsPage() {
       {/* Test Page Settings */}
       <Card className={showTestPage ? 'border-amber-500/30' : ''}>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <button 
+            onClick={() => toggleSection('test')}
+            className="w-full flex items-center justify-between"
+          >
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-amber-400" />
               <h3 className="font-bold">صفحة الاختبارات بالذكاء الاصطناعي</h3>
             </div>
-            <button
-              onClick={() => setShowTestPage(!showTestPage)}
-              className={`p-2 rounded-lg transition-all ${
-                showTestPage 
-                  ? 'bg-amber-500/20 text-amber-400' 
-                  : 'bg-slate-700 text-slate-400'
-              }`}
-            >
-              {showTestPage ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
-            </button>
-          </div>
+            {expandedSections.has('test') ? (
+              <ChevronUp className="w-5 h-5" />
+            ) : (
+              <ChevronDown className="w-5 h-5" />
+            )}
+          </button>
         </CardHeader>
-        <CardContent>
-          <p className="text-sm text-slate-400">
-            {showTestPage 
-              ? 'صفحة الاختبارات ستظهر في الشريط الجانبي للطلاب'
-              : 'صفحة الاختبارات لن تظهر في الموقع'}
-          </p>
-        </CardContent>
+        
+        {expandedSections.has('test') && (
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">تفعيل صفحة الاختبارات</p>
+                <p className="text-sm text-slate-400">
+                  {showTestPage 
+                    ? 'صفحة الاختبارات ستظهر في الشريط الجانبي للطلاب'
+                    : 'صفحة الاختبارات لن تظهر في الموقع'}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowTestPage(!showTestPage)}
+                className={`p-2 rounded-lg transition-all ${
+                  showTestPage 
+                    ? 'bg-amber-500/20 text-amber-400' 
+                    : 'bg-slate-700 text-slate-400'
+                }`}
+              >
+                {showTestPage ? <ToggleRight className="w-8 h-8" /> : <ToggleLeft className="w-8 h-8" />}
+              </button>
+            </div>
+            
+            <div className="p-4 bg-slate-800/50 rounded-lg">
+              <p className="text-sm text-slate-400">
+                عند تفعيل هذه الخاصية، سيظهر للطلاب في الشريط الجانبي رابط لصفحة الاختبارات بالذكاء الاصطناعي
+                حيث يمكنهم إنشاء اختبارات مخصصة في أي مادة.
+              </p>
+            </div>
+          </CardContent>
+        )}
       </Card>
 
       {/* Usage Stats */}
       <Card>
         <CardHeader>
           <h3 className="font-bold flex items-center gap-2">
-            <Zap className="w-5 h-5 text-primary" />
+            <Database className="w-5 h-5 text-primary" />
             إحصائيات الاستخدام
           </h3>
         </CardHeader>

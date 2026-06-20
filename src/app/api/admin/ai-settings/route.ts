@@ -16,12 +16,14 @@ export async function POST(request: NextRequest) {
       isEnabled,
       service,
       model,
+      freeModels,
       apiKey,
       searchEngine,
       searchApiKey,
       customPrompt,
       testPrompt,
-      showTestPage
+      showTestPage,
+      deepThinkingModels
     } = data
 
     // Upsert settings
@@ -31,24 +33,28 @@ export async function POST(request: NextRequest) {
         isEnabled,
         service,
         model,
+        freeModels,
         apiKey,
         searchEngine,
         searchApiKey,
         customPrompt,
         testPrompt,
         showTestPage,
+        deepThinkingModels
       },
       create: {
         id: 'default',
         isEnabled,
         service,
         model,
+        freeModels: freeModels || JSON.stringify([]),
         apiKey,
         searchEngine,
         searchApiKey,
         customPrompt,
         testPrompt,
         showTestPage,
+        deepThinkingModels: deepThinkingModels || JSON.stringify([])
       }
     })
 
@@ -75,8 +81,10 @@ export async function GET() {
       isEnabled: true,
       service: 'openai',
       model: 'gpt-4o-mini',
+      freeModels: JSON.stringify(['gpt-4o-mini', 'gpt-4o']),
       searchEngine: 'none',
-      showTestPage: true
+      showTestPage: true,
+      deepThinkingModels: JSON.stringify([])
     })
   } catch (error) {
     console.error('Error fetching AI settings:', error)

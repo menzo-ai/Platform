@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { registerSchema, RegisterInput } from '@/lib/validations'
 import Button from '@/components/ui/button'
 import Input from '@/components/ui/input'
-import { GraduationCap, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react'
+import { GraduationCap, Mail, Lock, User, Eye, EyeOff, AlertCircle, CheckCircle, Phone, UserCircle, BookOpen } from 'lucide-react'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -17,9 +17,15 @@ export default function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [canRegister, setCanRegister] = useState(true)
   const [registrationType, setRegistrationType] = useState<'admin' | 'student'>('student')
+  
+  // Additional fields
+  const [phone, setPhone] = useState('')
+  const [parentName, setParentName] = useState('')
+  const [parentPhone, setParentPhone] = useState('')
+  const [schoolYear, setSchoolYear] = useState<number>(1)
+  const [isAzhar, setIsAzhar] = useState(false)
 
   useEffect(() => {
-    // Check if first registration (admin)
     fetch('/api/auth/register')
       .then(res => res.json())
       .then(data => {
@@ -47,7 +53,14 @@ export default function RegisterPage() {
       const response = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          phone,
+          parentName,
+          parentPhone,
+          schoolYear,
+          isAzhar
+        }),
       })
 
       const result = await response.json()
@@ -77,7 +90,7 @@ export default function RegisterPage() {
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" />
       </div>
 
-      <div className="w-full max-w-md relative">
+      <div className="w-full max-w-lg relative">
         {/* Logo */}
         <div className="flex justify-center mb-8">
           <div className="flex items-center gap-3">
@@ -118,6 +131,7 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* Basic Info */}
             <div className="relative">
               <User className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
               <Input
@@ -137,6 +151,17 @@ export default function RegisterPage() {
                 placeholder="البريد الإلكتروني"
                 className="pr-12"
                 error={errors.email?.message}
+              />
+            </div>
+
+            <div className="relative">
+              <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <Input
+                type="tel"
+                placeholder="رقم الهاتف"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                className="pr-12"
               />
             </div>
 
@@ -184,6 +209,102 @@ export default function RegisterPage() {
                 رقم واحد على الأقل
               </p>
             </div>
+
+            {/* Student-specific fields */}
+            {registrationType === 'student' && (
+              <>
+                <div className="border-t border-slate-700 pt-5">
+                  <h3 className="text-sm font-medium text-slate-400 mb-4 flex items-center gap-2">
+                    <UserCircle className="w-4 h-4" />
+                    معلومات إضافية للطالب
+                  </h3>
+
+                  {/* School Year */}
+                  <div className="mb-4">
+                    <label className="block text-sm text-slate-400 mb-2 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4" />
+                      الصف الدراسي
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { value: 1, label: 'الصف الأول' },
+                        { value: 2, label: 'الصف الثاني' },
+                        { value: 3, label: 'الصف الثالث' },
+                      ].map((year) => (
+                        <button
+                          key={year.value}
+                          type="button"
+                          onClick={() => setSchoolYear(year.value)}
+                          className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                            schoolYear === year.value
+                              ? 'border-primary bg-primary/10 text-primary'
+                              : 'border-slate-700 hover:border-slate-600'
+                          }`}
+                        >
+                          {year.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Azhar or General */}
+                  <div className="mb-4">
+                    <label className="block text-sm text-slate-400 mb-2">
+                      نوع التعليم
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setIsAzhar(false)}
+                        className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                          !isAzhar
+                            ? 'border-primary bg-primary/10 text-primary'
+                            : 'border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        عام
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setIsAzhar(true)}
+                        className={`p-3 rounded-lg border-2 transition-all text-sm font-medium ${
+                          isAzhar
+                            ? 'border-emerald-500 bg-emerald-500/10 text-emerald-400'
+                            : 'border-slate-700 hover:border-slate-600'
+                        }`}
+                      >
+                        أزهر
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Parent Info */}
+                  <div className="space-y-4">
+                    <div className="relative">
+                      <UserCircle className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <Input
+                        type="text"
+                        placeholder="اسم ولى الأمر"
+                        value={parentName}
+                        onChange={(e) => setParentName(e.target.value)}
+                        className="pr-12"
+                      />
+                    </div>
+
+                    <div className="relative">
+                      <Phone className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+                      <Input
+                        type="tel"
+                        placeholder="رقم هاتف ولى الأمر"
+                        value={parentPhone}
+                        onChange={(e) => setParentPhone(e.target.value)}
+                        className="pr-12"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <Button type="submit" className="w-full" size="lg" isLoading={isLoading}>
               {registrationType === 'admin' ? 'إنشاء حساب المدير' : 'إنشاء الحساب'}

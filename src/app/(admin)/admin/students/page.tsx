@@ -322,7 +322,7 @@ export default function AdminStudentsPage() {
                 تعديل
               </Button>
               <Button
-                variant={selectedStudent.isActive ? 'danger' : 'secondary'}
+                variant={selectedStudent.isActive ? 'danger' : 'primary'}
                 className="flex-1"
                 onClick={() => {
                   toggleUserStatus(selectedStudent.id, selectedStudent.isActive)

@@ -8,11 +8,12 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const course = await prisma.course.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         chapters: {
           include: {
@@ -45,7 +46,7 @@ export async function GET(
         where: {
           userId_courseId: {
             userId: session.user.id,
-            courseId: params.id,
+            courseId: id,
           },
         },
       })
@@ -74,9 +75,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session) {
@@ -98,7 +100,7 @@ export async function PUT(
     }
 
     const course = await prisma.course.update({
-      where: { id: params.id },
+      where: { id },
       data: validation.data,
     })
 
@@ -114,9 +116,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
 
     if (!session) {
@@ -128,7 +131,7 @@ export async function DELETE(
     }
 
     await prisma.course.delete({
-      where: { id: params.id },
+      where: { id },
     })
 
     return NextResponse.json({ message: 'تم حذف الدورة' })

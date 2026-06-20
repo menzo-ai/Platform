@@ -1,10 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Card, { CardHeader, CardContent } from '@/components/ui/card'
 import Button from '@/components/ui/button'
 import Badge from '@/components/ui/badge'
 import Input from '@/components/ui/input'
+import Modal from '@/components/ui/modal'
 import { 
   Brain,
   Sparkles,
@@ -18,35 +19,40 @@ import {
   AlertCircle,
   BookOpen,
   Target,
-  Zap,
-  Eye
+  Eye,
+  RotateCcw,
+  Trophy,
+  Star,
+  Settings,
+  BookMarked,
+  Filter
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 
 interface Question {
   id: number
   question: string
   options: string[]
   correct: number
-  difficulty: 'سهل' | 'متوسط' | 'صعب'
+  difficulty: string
   explanation: string
   userAnswer?: number
 }
 
 interface TestConfig {
   subject: string
+  subjectId?: string
   questionCount: number
-  difficulty: 'all' | 'سهل' | 'متوسط' | 'صعب'
+  difficulty: string
   time: number
+  description?: string
 }
 
-const subjects = [
-  'الفيزياء - الباب الأول',
-  'الفيزياء - الباب الثاني',
-  'الفيزياء - الباب الثالث',
-  'الفيزياء - الباب الرابع',
-  'الفيزياء - الباب الخامس',
-  'الفيزياء - الباب السادس',
-]
+interface Subject {
+  id: string
+  name: string
+  description?: string
+}
 
 const difficultyOptions = [
   { value: 'all', label: 'الكل', color: 'bg-slate-600' },
@@ -55,11 +61,19 @@ const difficultyOptions = [
   { value: 'صعب', label: 'صعب', color: 'bg-red-500' },
 ]
 
-const timeOptions = [5, 10, 15, 30, 60]
+const timeOptions = [
+  { value: 5, label: '5 دقائق' },
+  { value: 10, label: '10 دقائق' },
+  { value: 15, label: '15 دقيقة' },
+  { value: 30, label: '30 دقيقة' },
+  { value: 60, label: '60 دقيقة' },
+]
+
 const countOptions = [5, 10, 20, 50]
 
 export default function AITestPage() {
   const [step, setStep] = useState<'config' | 'test' | 'result'>('config')
+  const [subjects, setSubjects] = useState<Subject[]>([])
   const [config, setConfig] = useState<TestConfig>({
     subject: '',
     questionCount: 10,
@@ -71,34 +85,55 @@ export default function AITestPage() {
   const [loading, setLoading] = useState(false)
   const [timeLeft, setTimeLeft] = useState(0)
   const [startedAt, setStartedAt] = useState<Date | null>(null)
-  const [customCount, setCustomCount] = useState<string>('')
+  const [customCount, setCustomCount] = useState('')
+  const [testHistory, setTestHistory] = useState<any[]>([])
+
+  const fetchSubjects = async () => {
+    try {
+      const response = await fetch('/api/subjects')
+      if (response.ok) {
+        const data = await response.json()
+        setSubjects(data)
+      }
+    } catch (error) {
+      setSubjects([
+        { id: '1', name: 'الفيزياء - الباب الأول' },
+        { id: '2', name: 'الفيزياء - الباب الثاني' },
+        { id: '3', name: 'الفيزياء - الباب الثالث' },
+      ])
+    }
+  }
+
+  useEffect(() => {
+    fetchSubjects()
+  }, [])
+
+  useEffect(() => {
+    if (step === 'test' && timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(prev => prev - 1), 1000)
+      return () => clearTimeout(timer)
+    } else if (step === 'test' && timeLeft === 0) {
+      toast.error('انتهى الوقت!')
+      setStep('result')
+    }
+  }, [step, timeLeft])
 
   const startTest = async () => {
     setLoading(true)
     
-    // Simulate AI generating questions
-    await new Promise(resolve => setTimeout(resolve, 3000))
-    
-    // Generate sample questions based on config
-    const sampleQuestions: Question[] = Array.from({ length: config.questionCount }, (_, i) => ({
-      id: i + 1,
-      question: `سؤال رقم ${i + 1} - ${config.subject}\n${getSampleQuestion(i, config.difficulty)}`,
-      options: [
-        `الإجابة الصحيحة - ${config.subject}`,
-        `إجابة خاطئة 1`,
-        `إجابة خاطئة 2`,
-        `إجابة خاطئة 3`
-      ].sort(() => Math.random() - 0.5),
-      correct: 0, // Will be updated after shuffle
-      difficulty: config.difficulty === 'all' 
+    const sampleQuestions: Question[] = Array.from({ length: config.questionCount }, (_, i) => {
+      const difficulty = config.difficulty === 'all' 
         ? (['سهل', 'متوسط', 'صعب'] as const)[Math.floor(Math.random() * 3)]
-        : config.difficulty as 'سهل' | 'متوسط' | 'صعب',
-      explanation: `شرح الإجابة الصحيحة للسؤال رقم ${i + 1}`
-    }))
-
-    // Set correct answer index
-    sampleQuestions.forEach(q => {
-      q.correct = q.options.indexOf(`الإجابة الصحيحة - ${config.subject}`)
+        : config.difficulty
+      
+      return {
+        id: i + 1,
+        question: `سؤال رقم ${i + 1} - ${config.subject}`,
+        options: ['الإجابة الصحيحة', 'إجابة خاطئة 1', 'إجابة خاطئة 2', 'إجابة خاطئة 3'],
+        correct: 0,
+        difficulty,
+        explanation: 'هذا شرح الإجابة'
+      }
     })
 
     setQuestions(sampleQuestions)
@@ -106,22 +141,6 @@ export default function AITestPage() {
     setStartedAt(new Date())
     setStep('test')
     setLoading(false)
-  }
-
-  const getSampleQuestion = (index: number, difficulty: string): string => {
-    const physicsQuestions = [
-      'ما هو قانون نيوتن الثاني للحركة؟',
-      'احسب التسارع لجسم كتلته 10kg تؤثر عليه قوة 50N',
-      'ما هي وحدة قياس القوة في النظام الدولي؟',
-      'اشرح ظاهرة الانعكاس في المرايا المستوية',
-      'ما هو الفرق بين الشغل والطاقة؟',
-      'احسب الطاقة الحركية لجسم يتحرك بسرعة 20m/s وكتلته 5kg',
-      'ما هي قوانين الانكسار؟',
-      'اشرح ظاهرة الحيود',
-      'ما هو الطول الموجي؟',
-      'احسب التردد لموجة طولها الموجي 2m وسرعتها 10m/s'
-    ]
-    return physicsQuestions[index % physicsQuestions.length]
   }
 
   const selectAnswer = (answerIndex: number) => {
@@ -149,7 +168,7 @@ export default function AITestPage() {
   const calculateResults = () => {
     const correct = questions.filter(q => q.userAnswer === q.correct).length
     const total = questions.length
-    const score = (correct / total) * 100
+    const score = Math.round((correct / total) * 100)
     const timeTaken = startedAt ? Math.floor((Date.now() - startedAt.getTime()) / 1000) : 0
     return { correct, total, score, timeTaken }
   }
@@ -162,24 +181,26 @@ export default function AITestPage() {
     setStartedAt(null)
   }
 
-  // Timer effect
-  if (step === 'test' && timeLeft > 0) {
-    setTimeout(() => setTimeLeft(prev => prev - 1), 1000)
-  }
-
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
     const secs = seconds % 60
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
+  const getDifficultyBadge = (diff: string) => {
+    if (diff === 'سهل') return 'success'
+    if (diff === 'متوسط') return 'warning'
+    if (diff === 'صعب') return 'danger'
+    return 'info'
+  }
+
   const currentQ = questions[currentQuestion]
   const results = step === 'result' ? calculateResults() : null
+  const answeredCount = questions.filter(q => q.userAnswer !== undefined).length
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 md:p-6">
-      <div className="max-w-4xl mx-auto">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-4 md:p-8">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-8">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
@@ -192,41 +213,42 @@ export default function AITestPage() {
           </div>
         </div>
 
-        {/* Config Step */}
         {step === 'config' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="space-y-6">
             <Card>
               <CardHeader>
                 <h3 className="font-bold flex items-center gap-2">
-                  <FileText className="w-5 h-5 text-amber-400" />
+                  <BookMarked className="w-5 h-5 text-amber-400" />
+                  اختر المادة
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                  {subjects.map((subject) => (
+                    <button
+                      key={subject.id}
+                      onClick={() => setConfig(prev => ({ ...prev, subject: subject.name, subjectId: subject.id }))}
+                      className={`p-4 rounded-xl border-2 transition-all text-sm ${
+                        config.subject === subject.name
+                          ? 'border-amber-500 bg-amber-500/10'
+                          : 'border-slate-700 hover:border-slate-600'
+                      }`}
+                    >
+                      {subject.name}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <h3 className="font-bold flex items-center gap-2">
+                  <Settings className="w-5 h-5 text-amber-400" />
                   إعدادات الاختبار
                 </h3>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Subject */}
-                <div>
-                  <label className="block text-sm font-medium mb-3 flex items-center gap-2">
-                    <BookOpen className="w-4 h-4" />
-                    اختر المادة
-                  </label>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {subjects.map((subject) => (
-                      <button
-                        key={subject}
-                        onClick={() => setConfig(prev => ({ ...prev, subject }))}
-                        className={`p-3 rounded-xl border-2 transition-all text-sm ${
-                          config.subject === subject
-                            ? 'border-amber-500 bg-amber-500/10'
-                            : 'border-slate-700 hover:border-slate-600'
-                        }`}
-                      >
-                        {subject}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Question Count */}
                 <div>
                   <label className="block text-sm font-medium mb-3 flex items-center gap-2">
                     <Target className="w-4 h-4" />
@@ -240,50 +262,44 @@ export default function AITestPage() {
                           setConfig(prev => ({ ...prev, questionCount: count }))
                           setCustomCount('')
                         }}
-                        className={`px-6 py-3 rounded-xl border-2 transition-all ${
+                        className={`px-6 py-3 rounded-xl border-2 transition-all font-medium ${
                           config.questionCount === count && !customCount
-                            ? 'border-amber-500 bg-amber-500/10 font-bold'
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-400'
                             : 'border-slate-700 hover:border-slate-600'
                         }`}
                       >
                         {count}
                       </button>
                     ))}
-                    <div className="flex items-center gap-2">
-                      <span className="text-slate-400">مخصص (حتى 100):</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={100}
-                        value={customCount}
-                        onChange={(e) => {
-                          const val = e.target.value
-                          setCustomCount(val)
-                          if (val) {
-                            setConfig(prev => ({ ...prev, questionCount: Math.min(100, Math.max(1, parseInt(val) || 1)) }))
-                          }
-                        }}
-                        className="input w-20"
-                        placeholder="..."
-                      />
-                    </div>
+                    <Input
+                      type="number"
+                      placeholder="مخصص (حتى 100)"
+                      value={customCount}
+                      onChange={(e) => {
+                        setCustomCount(e.target.value)
+                        const num = parseInt(e.target.value)
+                        if (num > 0 && num <= 100) {
+                          setConfig(prev => ({ ...prev, questionCount: num }))
+                        }
+                      }}
+                      className="w-32"
+                    />
                   </div>
                 </div>
 
-                {/* Difficulty */}
                 <div>
                   <label className="block text-sm font-medium mb-3 flex items-center gap-2">
-                    <Zap className="w-4 h-4" />
+                    <Filter className="w-4 h-4" />
                     مستوى الصعوبة
                   </label>
                   <div className="flex flex-wrap gap-3">
                     {difficultyOptions.map((opt) => (
                       <button
                         key={opt.value}
-                        onClick={() => setConfig(prev => ({ ...prev, difficulty: opt.value as any }))}
-                        className={`flex items-center gap-2 px-6 py-3 rounded-xl border-2 transition-all ${
+                        onClick={() => setConfig(prev => ({ ...prev, difficulty: opt.value }))}
+                        className={`px-6 py-3 rounded-xl border-2 transition-all font-medium flex items-center gap-2 ${
                           config.difficulty === opt.value
-                            ? 'border-amber-500 bg-amber-500/10 font-bold'
+                            ? 'border-amber-500 bg-amber-500/10'
                             : 'border-slate-700 hover:border-slate-600'
                         }`}
                       >
@@ -294,114 +310,98 @@ export default function AITestPage() {
                   </div>
                 </div>
 
-                {/* Time */}
                 <div>
                   <label className="block text-sm font-medium mb-3 flex items-center gap-2">
                     <Clock className="w-4 h-4" />
                     الوقت (دقائق)
                   </label>
                   <div className="flex flex-wrap gap-3">
-                    {timeOptions.map((time) => (
+                    {timeOptions.map((opt) => (
                       <button
-                        key={time}
-                        onClick={() => setConfig(prev => ({ ...prev, time }))}
-                        className={`px-6 py-3 rounded-xl border-2 transition-all ${
-                          config.time === time
-                            ? 'border-amber-500 bg-amber-500/10 font-bold'
+                        key={opt.value}
+                        onClick={() => setConfig(prev => ({ ...prev, time: opt.value }))}
+                        className={`px-6 py-3 rounded-xl border-2 transition-all font-medium ${
+                          config.time === opt.value
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-400'
                             : 'border-slate-700 hover:border-slate-600'
                         }`}
                       >
-                        {time}
+                        {opt.label}
                       </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Start Button */}
-                <Button
-                  onClick={startTest}
-                  disabled={!config.subject || loading}
-                  className="w-full h-14 text-lg"
+                <Button 
+                  onClick={startTest} 
+                  disabled={loading || !config.subject}
+                  className="w-full py-4 text-lg bg-gradient-to-r from-amber-500 to-orange-500"
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      جاري إنشاء الاختبار...
+                      <Loader2 className="w-5 h-5 ml-2 animate-spin" />
+                      جاري توليد الأسئلة...
                     </>
                   ) : (
                     <>
-                      <Sparkles className="w-5 h-5" />
+                      <Sparkles className="w-5 h-5 ml-2" />
                       ابدأ الاختبار
                     </>
                   )}
                 </Button>
               </CardContent>
             </Card>
-
-            {/* Info Card */}
-            <Card className="border-amber-500/30">
-              <CardContent className="p-4">
-                <div className="flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-slate-300">
-                    <p className="font-medium mb-1">كيف يعمل الاختبار؟</p>
-                    <p className="text-slate-400">
-                      الذكاء الاصطناعي ينشئ أسئلة مخصصة بناءً على اختياراتك. الأسئلة متنوعة في مستوى الصعوبة وتغطي أهم نقاط المادة.
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         )}
 
-        {/* Test Step */}
         {step === 'test' && currentQ && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* Progress Bar */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Badge variant="warning" className="text-sm">
-                  {currentQ.difficulty}
-                </Badge>
-                <span className="text-slate-400 text-sm">
-                  السؤال {currentQuestion + 1} / {questions.length}
-                </span>
-              </div>
-              <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                timeLeft <= 60 ? 'bg-red-500/20 text-red-400' : 'bg-slate-800'
-              }`}>
-                <Clock className="w-4 h-4" />
-                <span className="font-mono font-bold">{formatTime(timeLeft)}</span>
-              </div>
-            </div>
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-4">
+                    <Badge variant={getDifficultyBadge(currentQ.difficulty)}>
+                      {currentQ.difficulty}
+                    </Badge>
+                    <span className="text-slate-400">
+                      السؤال {currentQuestion + 1} / {questions.length}
+                    </span>
+                  </div>
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+                    timeLeft <= 60 ? 'bg-red-500/20 text-red-400' : 'bg-slate-800'
+                  }`}>
+                    <Clock className="w-5 h-5" />
+                    <span className="font-mono text-lg">{formatTime(timeLeft)}</span>
+                  </div>
+                </div>
+                
+                <div className="flex flex-wrap gap-1">
+                  {questions.map((q, i) => (
+                    <button
+                      key={q.id}
+                      onClick={() => setCurrentQuestion(i)}
+                      className={`w-8 h-8 rounded-lg text-xs font-medium transition-all ${
+                        i === currentQuestion
+                          ? 'bg-amber-500 text-white'
+                          : q.userAnswer !== undefined
+                            ? 'bg-emerald-500/30 text-emerald-400'
+                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
+                      }`}
+                    >
+                      {i + 1}
+                    </button>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
 
-            {/* Progress Indicators */}
-            <div className="flex flex-wrap gap-2 mb-6">
-              {questions.map((q, i) => (
-                <button
-                  key={q.id}
-                  onClick={() => setCurrentQuestion(i)}
-                  className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${
-                    i === currentQuestion
-                      ? 'bg-amber-500 text-white'
-                      : q.userAnswer !== undefined
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                  }`}
-                >
-                  {i + 1}
-                </button>
-              ))}
-            </div>
-
-            {/* Question Card */}
             <Card>
               <CardContent className="p-6">
-                <div className="flex items-start gap-2 mb-4">
-                  <span className="text-amber-400 font-bold">{currentQ.difficulty}</span>
-                </div>
-                <h3 className="text-xl font-bold mb-6 whitespace-pre-line">
+                <Badge variant={getDifficultyBadge(currentQ.difficulty)} className="mb-4">
+                  {currentQ.difficulty}
+                </Badge>
+                
+                <h3 className="text-xl font-bold mb-6">
                   {currentQ.question}
                 </h3>
                 
@@ -416,101 +416,99 @@ export default function AITestPage() {
                           : 'border-slate-700 hover:border-slate-600'
                       }`}
                     >
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-sm ${
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
                         currentQ.userAnswer === i
                           ? 'bg-amber-500 text-white'
                           : 'bg-slate-800 text-slate-400'
                       }`}>
                         {i + 1}
                       </div>
-                      <span>{option}</span>
+                      <span className="flex-1">{option}</span>
+                      {currentQ.userAnswer === i && <CheckCircle className="w-5 h-5 text-amber-400" />}
                     </button>
                   ))}
                 </div>
               </CardContent>
             </Card>
 
-            {/* Navigation */}
             <div className="flex items-center justify-between">
               <Button
                 variant="outline"
                 onClick={prevQuestion}
                 disabled={currentQuestion === 0}
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-4 h-4 ml-1" />
                 السابق
               </Button>
+              
+              <span className="text-slate-400">{answeredCount} / {questions.length}</span>
               
               {currentQuestion === questions.length - 1 ? (
                 <Button onClick={finishTest} className="bg-emerald-500 hover:bg-emerald-600">
                   إنهاء الاختبار
-                  <CheckCircle className="w-4 h-4" />
+                  <CheckCircle className="w-4 h-4 mr-1" />
                 </Button>
               ) : (
                 <Button onClick={nextQuestion}>
                   التالي
-                  <ChevronLeft className="w-4 h-4" />
+                  <ChevronLeft className="w-4 h-4 mr-1" />
                 </Button>
               )}
             </div>
-
-            {/* Unanswered Warning */}
-            {questions.some(q => q.userAnswer === undefined) && (
-              <div className="text-center text-sm text-slate-400">
-                يوجد {questions.filter(q => q.userAnswer === undefined).length} سؤال بدون إجابة
-              </div>
-            )}
           </div>
         )}
 
-        {/* Result Step */}
         {step === 'result' && results && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {/* Score Card */}
+          <div className="space-y-6">
             <Card className={`border-2 ${
               results.score >= 70 ? 'border-emerald-500/30' : 
               results.score >= 50 ? 'border-amber-500/30' : 'border-red-500/30'
             }`}>
               <CardContent className="p-8 text-center">
-                <div className={`w-24 h-24 mx-auto mb-4 rounded-full flex items-center justify-center ${
+                <div className={`w-32 h-32 mx-auto mb-6 rounded-full flex items-center justify-center ${
                   results.score >= 70 ? 'bg-emerald-500/20' : 
                   results.score >= 50 ? 'bg-amber-500/20' : 'bg-red-500/20'
                 }`}>
-                  <span className={`text-4xl font-bold ${
+                  <span className={`text-5xl font-bold ${
                     results.score >= 70 ? 'text-emerald-400' : 
                     results.score >= 50 ? 'text-amber-400' : 'text-red-400'
                   }`}>
-                    {Math.round(results.score)}%
+                    {results.score}%
                   </span>
                 </div>
                 
-                <h2 className="text-2xl font-bold mb-2">
+                <div className="flex items-center justify-center gap-2 mb-4">
+                  {results.score >= 70 ? <Trophy className="w-8 h-8 text-emerald-400" /> : 
+                   results.score >= 50 ? <Star className="w-8 h-8 text-amber-400" /> :
+                   <RotateCcw className="w-8 h-8 text-red-400" />}
+                </div>
+                
+                <h2 className="text-3xl font-bold mb-2">
                   {results.score >= 70 ? 'ممتاز! 🎉' : 
                    results.score >= 50 ? 'جيد! 👍' : 'حاول مرة أخرى 💪'}
                 </h2>
                 
-                <p className="text-slate-400 mb-4">
-                  أجبت على {results.correct} من {results.total} سؤال بشكل صحيح
+                <p className="text-slate-400 mb-6">
+                  أجبت على {results.correct} من {results.total} سؤال
                 </p>
 
-                <div className="flex items-center justify-center gap-4 text-sm">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-center gap-6 text-sm">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-slate-800 rounded-lg">
                     <Clock className="w-4 h-4 text-slate-400" />
-                    <span>الوقت: {Math.floor(results.timeTaken / 60)}:{String(results.timeTaken % 60).padStart(2, '0')}</span>
+                    <span>{formatTime(results.timeTaken)}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/10 rounded-lg">
                     <CheckCircle className="w-4 h-4 text-emerald-400" />
-                    <span>صحيح: {results.correct}</span>
+                    <span className="text-emerald-400">{results.correct}</span>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-red-500/10 rounded-lg">
                     <XCircle className="w-4 h-4 text-red-400" />
-                    <span>خطأ: {results.total - results.correct}</span>
+                    <span className="text-red-400">{results.total - results.correct}</span>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Review Questions */}
             <Card>
               <CardHeader>
                 <h3 className="font-bold flex items-center gap-2">
@@ -530,34 +528,25 @@ export default function AITestPage() {
                   >
                     <div className="flex items-start gap-3">
                       {q.userAnswer === q.correct ? (
-                        <CheckCircle className="w-5 h-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                        <CheckCircle className="w-6 h-6 text-emerald-400 flex-shrink-0" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                        <XCircle className="w-6 h-6 text-red-400 flex-shrink-0" />
                       )}
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={q.difficulty === 'سهل' ? 'success' : q.difficulty === 'متوسط' ? 'warning' : 'danger'} className="text-xs">
-                            {q.difficulty}
-                          </Badge>
+                          <Badge variant={getDifficultyBadge(q.difficulty)} className="text-xs">{q.difficulty}</Badge>
                           <span className="text-slate-400 text-sm">السؤال {i + 1}</span>
                         </div>
-                        <p className="font-medium mb-3 whitespace-pre-line">{q.question}</p>
+                        <p className="font-medium mb-2">{q.question}</p>
                         
-                        <div className="text-sm space-y-1">
-                          <p className="text-emerald-400">
-                            ✓ الإجابة الصحيحة: {q.options[q.correct]}
-                          </p>
-                          {q.userAnswer !== undefined && q.userAnswer !== q.correct && (
-                            <p className="text-red-400">
-                              ✗ إجابتك: {q.options[q.userAnswer]}
-                            </p>
-                          )}
-                        </div>
-                        
-                        <p className="text-slate-400 text-sm mt-3 flex items-center gap-1">
-                          <FileText className="w-3 h-3" />
-                          {q.explanation}
+                        <p className="text-emerald-400 text-sm">
+                          ✓ {q.options[q.correct]}
                         </p>
+                        {q.userAnswer !== undefined && q.userAnswer !== q.correct && (
+                          <p className="text-red-400 text-sm mt-1">
+                            ✗ {q.options[q.userAnswer]}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -565,17 +554,13 @@ export default function AITestPage() {
               </CardContent>
             </Card>
 
-            {/* Actions */}
-            <div className="flex gap-4">
-              <Button variant="outline" onClick={restartTest} className="flex-1">
-                <Sparkles className="w-4 h-4" />
+            <div className="grid grid-cols-2 gap-4">
+              <Button variant="outline" onClick={restartTest} className="py-6">
+                <Sparkles className="w-5 h-5 ml-2" />
                 اختبار جديد
               </Button>
-              <Button onClick={() => {
-                setCurrentQuestion(0)
-                setStep('test')
-              }} className="flex-1">
-                <Eye className="w-4 h-4" />
+              <Button onClick={() => { setCurrentQuestion(0); setStep('test') }} className="py-6 bg-amber-500">
+                <RotateCcw className="w-5 h-5 ml-2" />
                 إعادة المحاولة
               </Button>
             </div>

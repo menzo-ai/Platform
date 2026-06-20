@@ -30,6 +30,7 @@ model User {
   isForumBanned   Boolean   @default(false)
   isCommentBanned Boolean   @default(false)
   isAccountBanned Boolean   @default(false)
+  subjectId       String?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -57,20 +58,35 @@ model User {
   codeUsages         CodeUsage[]
   CourseComment      CourseComment[]
   CourseLike         CourseLike[]
+  subject            Subject?            @relation(fields: [subjectId], references: [id])
+}
+
+model Subject {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+
+  users       User[]
+  aiExamConfigs AIExamConfig[]
+  aiTestResults AIExamResult[]
+  courses     Course[]
 }
 
 model AISettings {
-  id           String   @id @default(cuid())
-  isEnabled    Boolean  @default(true)
-  service      String   @default("openai")
-  model        String   @default("gpt-4o-mini")
-  apiKey       String?
-  searchEngine String?
-  searchApiKey String?
-  customPrompt String?
-  testPrompt   String?
-  showTestPage Boolean  @default(true)
-  updatedAt    DateTime @updatedAt
+  id             String   @id @default(cuid())
+  isEnabled      Boolean  @default(true)
+  service        String   @default("openai")
+  model          String   @default("gpt-4o-mini")
+  freeModels     String   @default("[]")
+  apiKey         String?
+  searchEngine   String?
+  searchApiKey   String?
+  customPrompt   String?
+  testPrompt     String?
+  showTestPage   Boolean  @default(true)
+  deepThinkingModels String @default("[]")
+  updatedAt      DateTime @updatedAt
 }
 
 model AIConversation {
@@ -102,7 +118,8 @@ model AIExamResult {
   id          String    @id @default(cuid())
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  subject     String
+  subjectId   String
+  subject     Subject   @relation(fields: [subjectId], references: [id], onDelete: Cascade)
   questions   String
   answers     String?
   score       Float?
@@ -110,6 +127,20 @@ model AIExamResult {
   timeTaken   Int?
   startedAt   DateTime  @default(now())
   completedAt DateTime?
+}
+
+model AIExamConfig {
+  id          String   @id @default(cuid())
+  subjectId   String
+  subject     Subject  @relation(fields: [subjectId], references: [id], onDelete: Cascade)
+  description String?
+  numQuestions Int     @default(10)
+  difficulty  String   @default("all")
+  timeMinutes Int      @default(15)
+  prompt      String?
+  isEnabled   Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
 model Subscription {
@@ -180,6 +211,9 @@ model PlatformSettings {
   aboutText       String?
   isWalletEnabled Boolean  @default(true)
   isCodesEnabled  Boolean  @default(true)
+  developerName   String?  @default("Mohamed El-Manzalawy")
+  developerEmail  String?  @default("moha147wa@gmail.com")
+  developerAvatar String?
   updatedAt       DateTime @updatedAt
 }
 
@@ -194,6 +228,8 @@ model Course {
   isPublished Boolean  @default(false)
   isAiEnabled Boolean  @default(true)
   aiPrompt    String?
+  subjectId   String?
+  subject     Subject? @relation(fields: [subjectId], references: [id])
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
