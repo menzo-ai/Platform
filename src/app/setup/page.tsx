@@ -46,19 +46,6 @@ const DATABASE_PROVIDERS: ProviderConfig[] = [
     docs: 'https://www.sqlite.org/'
   },
   {
-    id: 'supabase',
-    name: 'Supabase',
-    icon: Box,
-    color: 'from-emerald-500 to-teal-500',
-    description: 'PostgreSQL مجاني مع خدمات إضافية',
-    fields: [
-      { id: 'url', label: 'Project URL', type: 'text', placeholder: 'https://xxxxx.supabase.co', required: true },
-      { id: 'anonKey', label: 'Anon Key', type: 'password', placeholder: 'eyJhbGci...', required: true },
-      { id: 'serviceKey', label: 'Service Role Key', type: 'password', placeholder: 'eyJhbGci...', required: true },
-    ],
-    docs: 'https://supabase.com/docs'
-  },
-  {
     id: 'mongodb',
     name: 'MongoDB Atlas',
     icon: Database,

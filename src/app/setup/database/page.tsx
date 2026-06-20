@@ -89,20 +89,6 @@ const DATABASE_PROVIDERS: DatabaseProvider[] = [
     docsUrl: 'https://dev.mysql.com/doc/'
   },
   {
-    id: 'supabase',
-    name: 'Supabase',
-    icon: Cloud,
-    color: 'from-emerald-500 to-green-600',
-    description: 'منصة متكاملة مع Authentication وRealtime',
-    fields: [
-      { name: 'Project URL', key: 'url', type: 'text', placeholder: 'https://xxx.supabase.co', required: true },
-      { name: 'Anon Key (Public)', key: 'publishableKey', type: 'text', placeholder: 'eyJhbGc...', required: true, helpText: 'المفتاح العام من Supabase' },
-      { name: 'Secret Key', key: 'secretKey', type: 'password', placeholder: 'eyJhbGc...', required: true, helpText: 'المفتاح السري من Supabase' },
-      { name: 'JWT Secret', key: 'jwtSecret', type: 'password', placeholder: 'أدخل JWT Secret', required: false, helpText: 'JWT Secret من Supabase' }
-    ],
-    docsUrl: 'https://supabase.com/docs'
-  },
-  {
     id: 'neon',
     name: 'Neon',
     icon: Zap,

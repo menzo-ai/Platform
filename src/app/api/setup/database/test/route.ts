@@ -14,8 +14,6 @@ export async function POST(request: NextRequest) {
     }
 
     // For other databases, simulate connection test
-    // In production, you would actually test the connection
-    
     if (type === 'postgresql' || type === 'neon') {
       const connectionUrl = connectionString || url
       if (!connectionUrl) {
@@ -24,7 +22,6 @@ export async function POST(request: NextRequest) {
           message: 'يرجى إدخال رابط الاتصال'
         })
       }
-      // Simulate successful connection
       return NextResponse.json({
         success: true,
         message: `تم الاتصال بـ ${type} بنجاح!`
@@ -41,19 +38,6 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         message: 'تم الاتصال بـ MySQL بنجاح!'
-      })
-    }
-
-    if (type === 'supabase') {
-      if (!url || !body.publishableKey || !body.secretKey) {
-        return NextResponse.json({
-          success: false,
-          message: 'يرجى إدخال جميع البيانات المطلوبة'
-        })
-      }
-      return NextResponse.json({
-        success: true,
-        message: 'تم الاتصال بـ Supabase بنجاح!'
       })
     }
 
